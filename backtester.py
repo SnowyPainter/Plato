@@ -72,7 +72,7 @@ class Backtester:
         sharp_ratio = mean_return / std_return
         text = f"End Return : {end_return} \n"
         text += f"Worst ~ Best return {worst_return} ~ {best_return} \n"
-        text += f"Shart Ratio : {sharp_ratio}\n"
+        text += f"Sharp Ratio : {sharp_ratio}\n"
         if fname == '':
             print(text)
         else:

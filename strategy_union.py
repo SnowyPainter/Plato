@@ -30,6 +30,7 @@ while True:
         bt.buy(symbol)
     for symbol in sell_list:
         bt.sell(symbol)
-    
+
+bt.print_result()
 bt.plot_result()
     
