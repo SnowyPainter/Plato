@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, time
 import math, utils
 import numpy as np
 import matplotlib.pyplot as plt
+import mplcursors
 
 class Backtester:
     def _load_historical_data(self, symbol, start, end):
@@ -81,27 +82,50 @@ class Backtester:
 
     def plot_result(self):
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10))
-        norm = self._normalize_raw_data()
+        norm_raw = self._normalize_raw_data()
          
         for symbol in self.symbols:
-            ax1.plot(self.raw_data.index, norm[symbol+"_Price"], label=symbol)
+            ax1.plot(self.raw_data.index, norm_raw[symbol+"_Price"], label=symbol)
         ax1.set_xlabel('Date')
         
         mean = np.mean(self.portfolio_evaluates)
         std = np.std(self.portfolio_evaluates)
         norm_evalu = (self.portfolio_evaluates - mean) / std
         
+        for symbol in self.symbols:
+            spec_symbol_signals = self.trades[self.trades['stock'] == symbol]
+            buy_signals = spec_symbol_signals[spec_symbol_signals['action'] == 'buy']
+            sell_signals = spec_symbol_signals[spec_symbol_signals['action'] == 'sell']
+            for signal, marker, color in zip([buy_signals, sell_signals], ['^', 'v'], ['green', 'red']):
+                x = [signal.index[int(i)] for i in signal['bar']]
+                y = [norm_raw[symbol+"_Price"].iloc[int(i)] for i in signal['bar']]
+                ax1.scatter(x, y, color=color, marker=marker, s=30, label=f"{symbol} {'Bought' if color == 'green' else 'Sold'}")
+                
         ax2.plot(self.raw_data.index, norm_evalu, 'k-', label='Evaluated Asset Value')
         ax2.set_ylabel('Evaluated Asset Value', color='k')
         
-        buy_signals = self.trades[self.trades['action'] == 'buy']
-        sell_signals = self.trades[self.trades['action'] == 'sell']
-        buy_point_x = [buy_signals.index[int(i)] for i in buy_signals['bar']]
-        buy_point_y = [norm_evalu[int(i)] for i in buy_signals['bar']]
-        sell_point_x = [sell_signals.index[int(i)] for i in sell_signals['bar']]
-        sell_point_y = [norm_evalu[int(i)] for i in sell_signals['bar']]
-        ax2.scatter(buy_point_x, buy_point_y, color='green', marker='^', s=50, label='Bought')
-        ax2.scatter(sell_point_x, sell_point_y, color='red', marker='v', s=30, label='Sold')
+        signal_data = []
+        scatter_data = []
+        for action, marker, color in zip(['buy', 'sell'], ['^', 'v'], ['green', 'red']):
+            signals = self.trades[self.trades['action'] == action]
+            signal_data.append(signals)
+            x = [signals.index[int(i)] for i in signals['bar']]
+            y = [norm_evalu[int(i)] for i in signals['bar']]
+            scatter_data.append(ax2.scatter(x, y, color=color, marker=marker, s=50, label=f"{'Bought' if color == 'green' else 'Sold'}"))
+        
+        cursor = mplcursors.cursor(scatter_data[0], hover=True)
+        @cursor.connect("add")
+        def buy_scatter_hover(sel):
+            index = sel.index
+            sel.annotation.set(text=f"Amount: {signal_data[0]['amount'].iloc[index]}")
+            sel.annotation.get_bbox_patch().set(fc="white", alpha=0.9)
+        
+        cursor2 = mplcursors.cursor(scatter_data[1], hover=True)
+        @cursor2.connect("add")
+        def sell_scatter_hover(sel):
+            index = sel.index
+            sel.annotation.set(text=f"Profit: {signal_data[1]['profit'].iloc[index]}")
+            sel.annotation.get_bbox_patch().set(fc="white", alpha=0.9)
         
         fig.tight_layout()
         ax1.legend(loc='upper left')
