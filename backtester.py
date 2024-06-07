@@ -47,6 +47,9 @@ class Backtester:
         self.data_proc_func = data_proc_func
         self.portfolio_evaluates = []
         self.portfolio_returns = []
+        self.protfolio_stock_profits = {}
+        for symbol in symbols:
+            self.protfolio_stock_profits[symbol] = []
         self.price = {}
         self.entry_price = {}
         self.units = {}
@@ -71,9 +74,18 @@ class Backtester:
         mean_return = np.mean(self.portfolio_returns)
         std_return = np.std(self.portfolio_returns)
         sharp_ratio = mean_return / std_return
-        text = f"End Return : {end_return} \n"
-        text += f"Worst ~ Best return {worst_return} ~ {best_return} \n"
-        text += f"Sharp Ratio : {sharp_ratio}\n"
+        text = f"Trade Count : {self.trade_count}\n"
+        text += f"End Return : {end_return * 100:.2f} % \n"
+        text += f"Worst ~ Best return {worst_return * 100:.2f} ~ {best_return * 100:.2f} % \n\n"
+        text += f"Sharp Ratio : {sharp_ratio}\n\n"
+        for symbol in self.symbols:
+            profits = self.protfolio_stock_profits[symbol]
+            total_return = 1.0
+            for r in profits:
+                total_return *= (1 + r)
+            total_return -= 1
+            text += f"{symbol} Profit : {total_return*100:.2f} %\n"
+
         if fname == '':
             print(text)
         else:
@@ -162,7 +174,7 @@ class Backtester:
                 "action" : "buy",
                 "amount" : units,
                 "stock" : symbol,
-                "profit" : 0
+                "profit" : -0.0025
             }, index=self.raw_data.index)])
             self.trade_count += 1
     
@@ -171,12 +183,14 @@ class Backtester:
         bar = self.bar - 1
         if units > 0:
             self.current_amount += (self.price[symbol] * units * (1 - self.fee))
+            profit = (self.price[symbol] - self.entry_price[symbol]) / self.entry_price[symbol]
+            self.protfolio_stock_profits[symbol].append(profit)
             self.units[symbol] -= units
             self.trades = pd.concat([self.trades, pd.DataFrame({
                 "bar" : bar,
                 "action" : "sell",
                 "amount" : units,
                 "stock" : symbol,
-                "profit" : (self.price[symbol] - self.entry_price[symbol]) / self.entry_price[symbol]
+                "profit" : profit
             }, index=self.raw_data.index)])
             self.trade_count += 1
