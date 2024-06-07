@@ -1,4 +1,6 @@
 from Alpha1.strategy import *
+from Alpha2.strategy import *
+from datetime import datetime
 
 import backtester
 
@@ -15,22 +17,18 @@ def process_data(raw, bar):
         "LMA" : LMA,
         "SMA" : SMA
     }
-    
 
-symbols = ["MSFT", "TSLA", "AAPL", "NVDA", "AMD"]
 bt = backtester.Backtester(symbols, '2023-01-01', '2024-06-05', 10000000, 0.0025, process_data)
-MABT = MABreakThrough()
+symbols = bt.symbols
 
+bar = 0
 while True:
-    data = bt.go_next()
+    data, today = bt.go_next()
     if data == -1:
         break
-    buy_list, sell_list = MABT.action(symbols, data)
-    for symbol in buy_list:
-        bt.buy(symbol)
-    for symbol in sell_list:
-        bt.sell(symbol)
 
+    
+    bar += 1
 bt.print_result()
 bt.plot_result()
     

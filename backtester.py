@@ -8,17 +8,6 @@ import matplotlib.pyplot as plt
 import mplcursors
 
 class Backtester:
-    def _load_historical_data(self, symbol, start, end):
-        d = yf.download(symbol, start=start, end=end)
-        d.rename(columns={'Open': symbol+'_Price', 'Volume' : symbol+"_Volume"}, inplace=True)
-        d.index = pd.to_datetime(d.index, format="%Y-%m-%d %H:%M:%S%z")
-        return d[[symbol+'_Price', symbol+"_Volume"]]
-    def _load_historical_datas(self, symbols, start, end):
-        dfs = []
-        for symbol in symbols:
-            dfs.append(self._load_historical_data(symbol, start, end))
-        return utils.merge_dfs(dfs)
-    
     def _normalize_raw_data(self):
         mean, std = self.raw_data.mean(), self.raw_data.std()
         return (self.raw_data - mean) / std
@@ -42,8 +31,8 @@ class Backtester:
         self.evaluated_amount = initial_amount
         self.current_amount = initial_amount
         self.fee = fee
+        self.raw_data, symbols = utils.load_historical_datas(symbols, start, end)
         self.symbols = symbols
-        self.raw_data = self._load_historical_datas(symbols, start, end)
         self.data_proc_func = data_proc_func
         self.portfolio_evaluates = []
         self.portfolio_returns = []
@@ -68,6 +57,8 @@ class Backtester:
         self.trade_count = 0
     
     def print_result(self, fname=''):
+        self.portfolio_returns = np.array(self.portfolio_returns)
+        self.portfolio_returns[np.isnan(self.portfolio_returns)] = 0.0
         end_return = self.portfolio_returns[-1]
         worst_return = min(self.portfolio_returns)
         best_return = max(self.portfolio_returns)
@@ -100,6 +91,8 @@ class Backtester:
             ax1.plot(self.raw_data.index, norm_raw[symbol+"_Price"], label=symbol)
         ax1.set_xlabel('Date')
         
+        self.portfolio_evaluates = np.array(self.portfolio_evaluates)
+        self.portfolio_evaluates[np.isnan(self.portfolio_evaluates)] = 0.0
         mean = np.mean(self.portfolio_evaluates)
         std = np.std(self.portfolio_evaluates)
         norm_evalu = (self.portfolio_evaluates - mean) / std
@@ -148,16 +141,15 @@ class Backtester:
     
     def go_next(self):
         if self.bar >= self.raw_data.shape[0]:
-            return -1
+            return -1, datetime.now()
         self.evaluated_amount = self.current_amount
         for symbol in self.symbols:
             self.price[symbol] = self.raw_data[symbol+"_Price"].iloc[self.bar]
             self.evaluated_amount += self.units[symbol] * self.price[symbol]
-
         self.portfolio_evaluates.append(self.evaluated_amount)
         self.portfolio_returns.append((self.evaluated_amount - self.init_amount) / self.init_amount)
         self.bar += 1
-        return self.data_proc_func(self.raw_data, self.bar - 1)
+        return self.data_proc_func(self.raw_data, self.bar - 1), self.raw_data.index[self.bar - 1]
     
     def buy(self, symbol, ratio=0.1):
         units = self._max_units_could_affordable(ratio, self.init_amount, self.current_amount, self.price[symbol], self.fee)
