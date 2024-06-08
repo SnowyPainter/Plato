@@ -149,7 +149,7 @@ class Backtester:
         self.portfolio_evaluates.append(self.evaluated_amount)
         self.portfolio_returns.append((self.evaluated_amount - self.init_amount) / self.init_amount)
         self.bar += 1
-        return self.data_proc_func(self.raw_data, self.bar - 1), self.raw_data.index[self.bar - 1]
+        return self.data_proc_func(self.raw_data, self._normalize_raw_data(), self.bar - 1), self.raw_data.index[self.bar - 1]
     
     def buy(self, symbol, ratio=0.1):
         units = self._max_units_could_affordable(ratio, self.init_amount, self.current_amount, self.price[symbol], self.fee)
@@ -178,6 +178,8 @@ class Backtester:
             profit = (self.price[symbol] - self.entry_price[symbol]) / self.entry_price[symbol]
             self.protfolio_stock_profits[symbol].append(profit)
             self.units[symbol] -= units
+            if self.units[symbol] <= 0:
+                self.entry_price[symbol] = 0
             self.trades = pd.concat([self.trades, pd.DataFrame({
                 "bar" : bar,
                 "action" : "sell",
