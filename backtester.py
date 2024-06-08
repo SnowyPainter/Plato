@@ -26,12 +26,12 @@ class Backtester:
         else:
             return current_units
             
-    def __init__(self, symbols, start, end, initial_amount, fee, data_proc_func):
+    def __init__(self, symbols, start, end, interval, initial_amount, fee, data_proc_func):
         self.init_amount = initial_amount
         self.evaluated_amount = initial_amount
         self.current_amount = initial_amount
         self.fee = fee
-        self.raw_data, symbols = utils.load_historical_datas(symbols, start, end)
+        self.raw_data, symbols = utils.load_historical_datas(symbols, start, end, interval)
         self.symbols = symbols
         self.data_proc_func = data_proc_func
         self.portfolio_evaluates = []

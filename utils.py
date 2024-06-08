@@ -37,17 +37,17 @@ def get_all_stock_datas_in_theme():
         all_stocks = all_stocks + list(get_theme_stocks(no).keys())
     return list(set(all_stocks))
 
-def load_historical_data(symbol, start, end):
-    d = yf.download(symbol, start=start, end=end)
+def load_historical_data(symbol, start, end, interval='1d'):
+    d = yf.download(symbol, start=start, end=end, interval=interval)
     d.rename(columns={'Open': symbol+'_Price', 'Volume' : symbol+"_Volume"}, inplace=True)
     d.index = pd.to_datetime(d.index, format="%Y-%m-%d %H:%M:%S%z")
     return d[[symbol+'_Price', symbol+"_Volume"]]
 
-def load_historical_datas(symbols, start, end):
+def load_historical_datas(symbols, start, end, interval='1d'):
     dfs = []
     edit_symbols = symbols.copy()
     for symbol in symbols:
-        df = load_historical_data(symbol, start, end)
+        df = load_historical_data(symbol, start, end, interval)
         if df.empty == True:
             edit_symbols.remove(symbol)
             continue
