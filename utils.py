@@ -53,3 +53,7 @@ def load_historical_datas(symbols, start, end, interval='1d'):
             continue
         dfs.append(df)
     return merge_dfs(dfs), edit_symbols
+
+def normalize(df):
+    mean, std = df.mean(), df.std()
+    return (df - mean) / std

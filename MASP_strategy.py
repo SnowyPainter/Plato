@@ -9,15 +9,12 @@ import backtester
 
 def process_data(raw, norm_raw, bar):
     price_columns = list(map(lambda symbol: symbol+"_Price", symbols))
-    vol_columns = list(map(lambda symbol: symbol+"_Volume", symbols))
     prices = raw[price_columns].iloc[bar]
-    vols = raw[vol_columns].iloc[bar]
-    LMA = raw[price_columns].rolling(50).mean().iloc[bar]
-    SMA = raw[price_columns].rolling(14).mean().iloc[bar]
+    LMA = norm_raw[price_columns].rolling(50).mean().iloc[bar]
+    SMA = norm_raw[price_columns].rolling(14).mean().iloc[bar]
     return {
         "norm_price" : norm_raw[price_columns].iloc[bar],
         "price" : prices,
-        "volume" : vols,
         "LMA" : LMA,
         "SMA" : SMA
     }
