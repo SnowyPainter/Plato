@@ -87,7 +87,7 @@ def schedule_job(symbols, MABT_weight, SP_weight, MABT_strategy, SP_strategy):
 print("Running for ", symbols, " with MASP strategy.")
 while True:
     if client.is_market_open():
-        schedule.every(1).second.do(schedule_job, symbols, MABT_weight, SP_weight, MABT, SP)
+        schedule.every(1).hour.do(schedule_job, symbols, MABT_weight, SP_weight, MABT, SP)
         while client.is_market_open():
             schedule.run_pending()
             time.sleep(1)

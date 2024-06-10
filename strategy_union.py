@@ -1,5 +1,3 @@
-from Alpha1.strategy import *
-from Alpha3.strategy import *
 
 from datetime import datetime
 
@@ -19,11 +17,9 @@ def process_data(raw, norm_raw, bar):
 #한미반도체, SK하이닉스, 삼성전자
 symbols = ["042700.KS", "000660.KS", "005930.KS"]
 
+
 bt = backtester.Backtester(symbols, '2023-01-01', '2024-01-01', '1d', 10000000, 0.0025, process_data)
 symbols = bt.symbols
-
-MABT_weight = 2
-SP_weight = 1.5
 
 bar = 0
 
