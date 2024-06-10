@@ -10,8 +10,7 @@ class TrendPredictor:
     
     def _prepare_data(self, df, symbol):
         price_column = symbol+"_Price"
-        volume_column = symbol+"_Volume"
-        df[volume_column] = utils.series_winsorize(df[volume_column])
+        df = df[[price_column]]
         df[price_column+"_Lag"] = utils.df_lags(df, price_column, 3)
         df[price_column+"_RSI"] = utils.calculate_rsi(df, price_column, 14)
         df[price_column+"_MACD"] = utils.df_MACD(df, price_column)
@@ -24,8 +23,8 @@ class TrendPredictor:
         model = LogisticRegression()
         return model
     
-    def __init__(self, symbol):
-        df = utils.load_historical_data(symbol, '2023-01-01', '2024-06-09', '1d')
+    def __init__(self, symbol, start, end, interval):
+        df = utils.load_historical_data(symbol, start, end, interval)
         self.x = self._prepare_data(df, symbol)
         self.y = utils.determine_trend(self.x, symbol+"_Price")
         self.model = self._build_model()

@@ -26,7 +26,7 @@ symbols = ["042700.KS", "000660.KS", "005930.KS"]
 
 trend_predictors = {}
 for symbol in symbols:
-    trend_predictors[symbol] = model.TrendPredictor(symbol)
+    trend_predictors[symbol] = model.TrendPredictor(symbol, '2023-01-01', '2024-06-09', '1d')
     trend_predictors[symbol].fit()
 
 config = ini_reader.strategy_settings_MASP("./settings/Salmon.ini")
@@ -41,8 +41,6 @@ MABT_weight = config["MABT_W"]
 SP_weight = config["SP_W"]
 
 basis = {}
-for symbol in symbols:
-    basis[symbol] = 0
 
 bar = 0
 
@@ -53,6 +51,7 @@ while True:
     red_flags = []
     trade_dict = {}
     for symbol in symbols:
+        basis[symbol] = 0
         trade_dict[symbol] = 0
         if bar > trend_predictors[symbol].minimal_data_length:
             trend = trend_predictors[symbol].predict(raw[[symbol+"_Price", symbol+"_Volume"]].iloc[bar-trend_predictors[symbol].minimal_data_length:bar], symbol)
