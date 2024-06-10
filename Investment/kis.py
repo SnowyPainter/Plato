@@ -93,7 +93,7 @@ class KISClient:
             price = str(price),
             quantity = str(qty),
         )
-        evaluated = self._evalute_balance()
+        self.current_amount -= qty * price * (1 + 0.0025)
         self.trade_logger.log("buy", symbol, qty, price, evaluated)
         self.logger.log(f"Buy {symbol} - {qty}/{price}, {resp['msg1']} | current {self.current_amount}")
         
@@ -109,6 +109,6 @@ class KISClient:
             price=str(price),
             quantity=str(qty)
         )
-        evaluated = self._evalute_balance()
+        self.current_amount += qty * price * (1 - 0.0025)
         self.trade_logger.log("sell", symbol, qty, price, evaluated)
         self.logger.log(f"Sell {symbol} - {qty}/{price}, {resp['msg1']} | current {self.current_amount}")

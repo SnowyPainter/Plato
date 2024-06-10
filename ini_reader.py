@@ -9,5 +9,6 @@ def strategy_settings_MASP(fname):
         "END_DATE" : config["STRATEGY"]["END"],
         "INTERVAL" : config["STRATEGY"]["INTERVAL"],
         "MABT_W" : config["STRATEGY"].getfloat("MABT_W"),
-        "SP_W" : config["STRATEGY"].getfloat("SP_W")
+        "SP_W" : config["STRATEGY"].getfloat("SP_W"),
+        "BASIS" : config["STRATEGY"].getfloat("BASIS")
     }
