@@ -62,7 +62,7 @@ class KISClient:
 
     def __init__(self, name):
         self.logger = logger.Logger(name)
-        self.trade_logger = logger.TradeLogger("./settings/MASP_Trades.csv")
+        self.trade_logger = logger.TradeLogger(f"./settings/{name}_Trades.csv")
         self.keys = self._read_config()
         if self.keys == -1:
             self.logger.log("Failed to load ./settings/keys.ini")
