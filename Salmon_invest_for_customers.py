@@ -3,11 +3,12 @@ from Alpha1.strategy import *
 from Alpha3.strategy import *
 import utils
 from Models import model
+import backtester
 
-import itertools
 import pandas as pd
 import pytz
 import math
+import itertools
 import schedule
 from datetime import datetime, timedelta
 import time
@@ -75,7 +76,12 @@ class TradingApp(QWidget):
         
         self.submit_button = QPushButton('Submit')
         self.submit_button.clicked.connect(self.on_submit)
+        
+        self.backtest_button = QPushButton('Backtest')
+        self.backtest_button.clicked.connect(self.backtest)
+        
         self.layout.addWidget(self.submit_button)
+        self.layout.addWidget(self.backtest_button)
         
         self.setLayout(self.layout)
         
@@ -101,7 +107,8 @@ class TradingApp(QWidget):
             print(self.trend_predictors[symbol].fit())
             
         self.timer.start(3600 * 1000)  # 1 hour in milliseconds
-    
+        self.submit_button.setText("Running")
+        
     def check_market_and_execute(self):
         if self.client.is_market_open():
             self.execute_trading_strategy()
@@ -147,6 +154,66 @@ class TradingApp(QWidget):
             elif amount < 0:
                 self.client.sell(code, processed_data["price"][stock+"_Price"], ratio)
 
+    def backtest(self):
+        self.symbols = self.symbol_input.text().split(' ')
+        symbols = self.symbols
+        MABT_weight = float(self.mabt_input.text())
+        SP_weight = float(self.sp_input.text())
+        TREND_BIAS = float(self.trend_bias_input.text())
+        trend_predictors = {}
+        for symbol in symbols:
+            trend_predictors[symbol] = model.TrendPredictor(symbol, '2023-05-01', '2024-06-12', '1h')
+            trend_predictors[symbol].fit()
+
+        bt = backtester.Backtester(symbols, '2023-01-01', '2024-01-01', '1d', 1000000000, 0.0025, self.process_data)
+        symbols = bt.symbols
+        MABT = MABreakThrough()
+        SP = StockPair()
+
+        basis = {}
+        bar = 0
+        while True:
+            raw, data, today = bt.go_next()
+            if data == -1:
+                break
+            red_flags = []
+            trade_dict = {}
+            for symbol in symbols:
+                basis[symbol] = 0
+                trade_dict[symbol] = 0
+                if bar > trend_predictors[symbol].minimal_data_length:
+                    trend = trend_predictors[symbol].predict(raw[[symbol+"_Price", symbol+"_Volume"]].iloc[bar-trend_predictors[symbol].minimal_data_length:bar], symbol)
+                    if trend == 1: #up
+                        basis[symbol] += TREND_BIAS
+                    elif trend == 0:
+                        red_flags.append(symbol)
+            buy_list, sell_list = MABT.action(symbols, data)
+            for stock in buy_list:
+                trade_dict[stock] += 1 * MABT_weight
+            for stock in sell_list:
+                trade_dict[stock] -= 1 * MABT_weight
+            
+            for pair in list(itertools.combinations(symbols, 2)):
+                buy_list, sell_list = SP.action(data, pair[0], pair[1])
+                for stock in buy_list:
+                    trade_dict[stock] += 1 * SP_weight
+                for stock in sell_list:
+                    trade_dict[stock] -= 1 * SP_weight
+
+            for stock, amount in trade_dict.items():
+                units = math.floor(abs(amount))
+                if stock in red_flags:
+                    continue
+                if amount > 0:
+                    bt.buy(stock, 0.1 * (units + basis[stock]))
+                elif amount < 0:
+                    bt.sell(stock, 0.1 * (units + basis[stock]))
+            
+            bar += 1
+
+        bt.print_result(f'./{datetime.now()}.txt')
+        bt.plot_result()
+    
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = TradingApp()
