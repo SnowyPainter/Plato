@@ -100,10 +100,10 @@ class TradingApp(QWidget):
             self.trend_predictors[symbol] = model.TrendPredictor(symbol, start, end, interval)
             print(self.trend_predictors[symbol].fit())
             
-        self.timer.start(3600 * 1000)  # 1 hour in milliseconds
+        self.timer.start(1 * 1000)  # 1 hour in milliseconds
     
     def check_market_and_execute(self):
-        if self.client.is_market_open():
+        if True:#self.client.is_market_open():
             self.execute_trading_strategy()
     
     def execute_trading_strategy(self):
@@ -134,7 +134,8 @@ class TradingApp(QWidget):
             for stock in sell_list:
                 trade_dict[stock] -= 1 * self.SP_weight
 
-        print(trade_dict)
+        print("Trade : ", trade_dict)
+        print("Red Flags : ", red_flags)
         for stock, amount in trade_dict.items():
             units = math.floor(abs(amount))
             ratio = 0.1 * (units + basis[stock])

@@ -101,6 +101,9 @@ class KISClient:
             quantity = str(qty),
         )
         self.current_amount -= qty * price * (1 + 0.0025)
+        if not (symbol in self.stocks_qty):
+            self.stocks_qty[symbol] = 0
+        self.stocks_qty[symbol] += qty
         self.trade_logger.log("buy", str(symbol), qty, price, self.calculate_evaluated())
         self.logger.log(f"Buy {symbol} - {qty}({ratio*100}%), price: {price}, {resp['msg1']} | current {self.current_amount}")
         
@@ -117,5 +120,8 @@ class KISClient:
             quantity=str(qty)
         )
         self.current_amount += qty * price * (1 - 0.0025)
-        self.trade_logger.log("sell",  str(symbol), qty, price, self.calculate_evaluated())
+        if not (symbol in self.stocks_qty):
+            self.stocks_qty[symbol] = 0
+        self.stocks_qty[symbol] -= qty
+        self.trade_logger.log("sell", str(symbol), qty, price, self.calculate_evaluated())
         self.logger.log(f"Sell {symbol} - {qty}({ratio*100}%), price: {price}, {resp['msg1']} | current {self.current_amount}")
