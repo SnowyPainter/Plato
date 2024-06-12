@@ -12,11 +12,11 @@ class TrendPredictor:
         price_column = symbol+"_Price"
         df = df[[price_column]]
         df[price_column+"_Lag"] = utils.df_lags(df, price_column, 3)
-        df[price_column+"_RSI"] = utils.calculate_rsi(df, price_column, 14)
         df[price_column+"_MACD"] = utils.df_MACD(df, price_column)
+        df[price_column+"_RSI"] = utils.calculate_rsi(df, price_column, 14)
+        df.dropna(inplace=True)
         df = utils.normalize(df)
         self.minimal_data_length = 14
-        df.dropna(inplace=True)
         return df
     
     def _build_model(self):

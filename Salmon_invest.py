@@ -11,6 +11,7 @@ import math
 import schedule
 from datetime import datetime, timedelta
 import time
+import sys
 
 def today(tz = 'Asia/Seoul'):
     return datetime.now(pytz.timezone(tz))
@@ -41,7 +42,7 @@ def append_current_data(raw_data, symbols):
     raw_data = pd.concat([raw_data, df])
     return raw_data, process_data(raw_data, utils.normalize(raw_data), -1)
 
-def action(trend_predictors, data, symbols, MABT_weight, SP_weight, MABT_strategy, SP_strategy):
+def action(trend_predictors, data, symbols, MABT_weight, SP_weight, TREND_BASIS, MABT_strategy, SP_strategy):
     red_flags = []
     trade_dict = {}
     basis = {}
@@ -51,7 +52,7 @@ def action(trend_predictors, data, symbols, MABT_weight, SP_weight, MABT_strateg
         d = data[0][[symbol+"_Price"]].iloc[-trend_predictors[symbol].minimal_data_length-1:-1]
         trend = trend_predictors[symbol].predict(d, symbol)
         if trend == 1: #up
-            basis[symbol] += 1.7
+            basis[symbol] += TREND_BASIS
         elif trend == 0:
             red_flags.append(symbol)
     buy_list, sell_list = MABT_strategy.action(symbols, data[1])
@@ -79,12 +80,12 @@ def action(trend_predictors, data, symbols, MABT_weight, SP_weight, MABT_strateg
             client.sell(code, data[1]["price"][stock+"_Price"], ratio)
 
 start, end, interval = today_before(30), today(), '1h'
+symbols = ["042700.KS", "000660.KS", "005930.KS"]
 MABT_weight = 2
 SP_weight = 1.5
-
+TREND_BASIS = 1.7
 trend_predictors = {}
 
-symbols = ["042700.KS", "000660.KS", "005930.KS"]
 raw_data, symbols = utils.load_historical_datas(symbols, start, end, interval)
 raw_data.index = pd.to_datetime(raw_data.index).tz_localize(None)
 raw_data.drop(columns=[col for col in raw_data.columns if col.endswith('_Volume')], inplace=True)
@@ -97,15 +98,15 @@ client = kis.KISClient("Salmon Sk Samsung Hanmi")
 MABT = MABreakThrough()
 SP = StockPair()
 
-def schedule_job(trend_predictors, symbols, MABT_weight, SP_weight, MABT_strategy, SP_strategy):
-    global raw_data
+def schedule_job(trend_predictors, symbols, MABT_strategy, SP_strategy):
+    global raw_data, MABT_weight, SP_weight, TREND_BASIS
     raw_data, processed_data = append_current_data(raw_data, symbols)
-    action(trend_predictors, (raw_data, processed_data), symbols, MABT_weight, SP_weight, MABT_strategy, SP_strategy)
+    action(trend_predictors, (raw_data, processed_data), symbols, MABT_weight, SP_weight, TREND_BASIS, MABT_strategy, SP_strategy)
 
 print("Running for ", symbols, " with Salmon strategy.")
 while True:
     if client.is_market_open():
-        schedule.every(1).hour.do(schedule_job, trend_predictors, symbols, MABT_weight, SP_weight, MABT, SP)
+        schedule.every(1).hour.do(schedule_job, trend_predictors, symbols, MABT, SP)
         while client.is_market_open():
             schedule.run_pending()
             time.sleep(1)

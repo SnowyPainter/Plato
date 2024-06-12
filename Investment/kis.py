@@ -83,7 +83,13 @@ class KISClient:
     def get_price(self, symbol):
         resp = self.broker.fetch_price(symbol)
         return float(resp['output']['stck_prpr'])
-        
+    
+    def calculate_evaluated(self):
+        evaluate_stocks = 0
+        for stock, qty in self.stocks_qty.items():
+            evaluate_stocks += self.stocks_qty[stock] * self.get_price(stock)
+        return self.current_amount + evaluate_stocks
+    
     def buy(self, symbol, price, ratio):
         price = int(price)
         qty = self._max_units_could_affordable(ratio, self.init_amount, self.current_amount, price, 0.0025)
@@ -95,7 +101,7 @@ class KISClient:
             quantity = str(qty),
         )
         self.current_amount -= qty * price * (1 + 0.0025)
-        self.trade_logger.log("buy", symbol, qty, price, evaluated)
+        self.trade_logger.log("buy", str(symbol), qty, price, self.calculate_evaluated())
         self.logger.log(f"Buy {symbol} - {qty}({ratio*100}%), price: {price}, {resp['msg1']} | current {self.current_amount}")
         
     def sell(self, symbol, price, ratio):
@@ -111,5 +117,5 @@ class KISClient:
             quantity=str(qty)
         )
         self.current_amount += qty * price * (1 - 0.0025)
-        self.trade_logger.log("sell", symbol, qty, price, evaluated)
+        self.trade_logger.log("sell",  str(symbol), qty, price, self.calculate_evaluated())
         self.logger.log(f"Sell {symbol} - {qty}({ratio*100}%), price: {price}, {resp['msg1']} | current {self.current_amount}")

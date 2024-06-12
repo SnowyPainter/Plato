@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import requests
 import yfinance as yf
 from scipy.stats.mstats import winsorize
+import numpy as np
 
 def merge_dfs(dfs):
     merged = dfs[0]
@@ -56,8 +57,9 @@ def load_historical_datas(symbols, start, end, interval='1d'):
     return merge_dfs(dfs), edit_symbols
 
 def normalize(df):
-    mean, std = df.mean(), df.std()
-    return (df - mean) / std
+    range_val = df.max() - df.min()
+    range_val[range_val == 0] = 1
+    return (df - df.min()) / (range_val)
 
 def series_winsorize(series, limits=(0.05, 0.05)):
     return winsorize(series, limits=limits)
@@ -69,10 +71,10 @@ def calculate_rsi(df, column, period=14):
     
     avg_gain = gain.rolling(window=period, min_periods=1).mean()
     avg_loss = loss.rolling(window=period, min_periods=1).mean()
-    
+
     rs = avg_gain / avg_loss
+    rs = rs.replace([np.inf, -np.inf], np.nan).fillna(0)
     rsi = 100 - (100 / (1 + rs))
-    
     return rsi
 
 def df_lags(df, column, lag):
