@@ -26,7 +26,7 @@ symbols = ["042700.KS", "000660.KS", "005930.KS"]
 
 trend_predictors = {}
 for symbol in symbols:
-    trend_predictors[symbol] = model.TrendPredictor(symbol, '2023-01-01', '2024-06-09', '1d')
+    trend_predictors[symbol] = model.TrendPredictor(symbol, '2023-05-01', '2024-06-12', '1h')
     trend_predictors[symbol].fit()
 
 config = ini_reader.strategy_settings_MASP("./settings/Salmon.ini")
@@ -59,7 +59,7 @@ while True:
                 basis[symbol] += config["BASIS"]
             elif trend == 0:
                 red_flags.append(symbol)
-    
+    print(red_flags)
     buy_list, sell_list = MABT.action(symbols, data)
     for stock in buy_list:
         trade_dict[stock] += 1 * MABT_weight

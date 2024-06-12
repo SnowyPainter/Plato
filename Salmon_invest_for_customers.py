@@ -100,10 +100,10 @@ class TradingApp(QWidget):
             self.trend_predictors[symbol] = model.TrendPredictor(symbol, start, end, interval)
             print(self.trend_predictors[symbol].fit())
             
-        self.timer.start(1 * 1000)  # 1 hour in milliseconds
+        self.timer.start(3600 * 1000)  # 1 hour in milliseconds
     
     def check_market_and_execute(self):
-        if True:#self.client.is_market_open():
+        if self.client.is_market_open():
             self.execute_trading_strategy()
     
     def execute_trading_strategy(self):
