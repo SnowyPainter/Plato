@@ -67,6 +67,7 @@ class KISClient:
         if self.keys == -1:
             self.logger.log("Failed to load ./settings/keys.ini")
             exit()
+        
         self.broker = mojito.KoreaInvestment(api_key=self.keys["APIKEY"], api_secret=self.keys["APISECRET"], acc_no=self.keys["ACCNO"], mock=False)
         self.init_amount, self.current_amount, self.stocks_qty, self.stocks_avg_price = self._get_balance()
         self.logger.log(f"Loading balance ...")
@@ -95,7 +96,7 @@ class KISClient:
         )
         self.current_amount -= qty * price * (1 + 0.0025)
         self.trade_logger.log("buy", symbol, qty, price, evaluated)
-        self.logger.log(f"Buy {symbol} - {qty}/{price}, {resp['msg1']} | current {self.current_amount}")
+        self.logger.log(f"Buy {symbol} - {qty}({ratio*100}%), price: {price}, {resp['msg1']} | current {self.current_amount}")
         
     def sell(self, symbol, price, ratio):
         if not (symbol in self.stocks_qty):
@@ -111,4 +112,4 @@ class KISClient:
         )
         self.current_amount += qty * price * (1 - 0.0025)
         self.trade_logger.log("sell", symbol, qty, price, evaluated)
-        self.logger.log(f"Sell {symbol} - {qty}/{price}, {resp['msg1']} | current {self.current_amount}")
+        self.logger.log(f"Sell {symbol} - {qty}({ratio*100}%), price: {price}, {resp['msg1']} | current {self.current_amount}")

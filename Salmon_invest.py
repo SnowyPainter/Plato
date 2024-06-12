@@ -69,13 +69,14 @@ def action(trend_predictors, data, symbols, MABT_weight, SP_weight, MABT_strateg
 
     for stock, amount in trade_dict.items():
         units = math.floor(abs(amount))
+        ratio = 0.1 * (units + basis[stock])
         if stock in red_flags:
             continue
         code = stock.split('.')[0]
         if amount > 0:
-            client.buy(code, data[1]["price"][stock+"_Price"], 0.1 * units + basis[stock])
+            client.buy(code, data[1]["price"][stock+"_Price"], ratio)
         elif amount < 0:
-            client.sell(code, data[1]["price"][stock+"_Price"], 0.1 * units + basis[stock])
+            client.sell(code, data[1]["price"][stock+"_Price"], ratio)
 
 start, end, interval = today_before(30), today(), '1h'
 MABT_weight = 2

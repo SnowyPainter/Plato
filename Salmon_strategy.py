@@ -72,15 +72,15 @@ while True:
             trade_dict[stock] += 1 * SP_weight
         for stock in sell_list:
             trade_dict[stock] -= 1 * SP_weight
-    
+
     for stock, amount in trade_dict.items():
         units = math.floor(abs(amount))
         if stock in red_flags:
             continue
         if amount > 0:
-            bt.buy(stock, 0.1 * units + basis[stock])
+            bt.buy(stock, 0.1 * (units + basis[stock]))
         elif amount < 0:
-            bt.sell(stock, 0.1 * units + basis[stock])
+            bt.sell(stock, 0.1 * (units + basis[stock]))
     
     bar += 1
 
