@@ -10,7 +10,7 @@ class Logger:
     def __init__(self, title) -> None:
         if not os.path.exists('./log'):
             os.makedirs('./log')
-        self.fname = "./log/" + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " " + title + ".txt"
+        self.fname = "./log/" + datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S") + " " + title + ".txt"
         self.log(title)
         
 class TradeLogger:
