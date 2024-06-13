@@ -14,13 +14,13 @@ class TrendPredictor:
         df[price_column+"_Lag"] = utils.df_lags(df, price_column, 3)
         df[price_column+"_MACD"] = utils.df_MACD(df, price_column)
         df[price_column+"_RSI"] = utils.calculate_rsi(df, price_column, 14)
-        df.dropna(inplace=True)
         df = utils.normalize(df)
+        df.dropna(inplace=True)
         self.minimal_data_length = 14
         return df
     
     def _build_model(self):
-        model = LogisticRegression()
+        model = LogisticRegression(max_iter=200, multi_class='multinomial', solver='lbfgs')
         return model
     
     def __init__(self, symbol, start, end, interval):

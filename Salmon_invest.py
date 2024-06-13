@@ -48,19 +48,16 @@ def action(trend_predictors, data, symbols, MABT_weight, SP_weight, TREND_BASIS,
     basis = {}
     for symbol in symbols:
         trade_dict[symbol] = 0
-        basis[symbol] = 0
         d = data[0][[symbol+"_Price"]].iloc[-trend_predictors[symbol].minimal_data_length-1:-1]
         trend = trend_predictors[symbol].predict(d, symbol)
-        if trend == 1: #up
-            basis[symbol] += TREND_BASIS
-        elif trend == 0:
-            red_flags.append(symbol)
+        basis[symbol] = trend * 0.5 * TREND_BASIS
+        
     buy_list, sell_list = MABT_strategy.action(symbols, data[1])
     for stock in buy_list:
         trade_dict[stock] += 1 * MABT_weight
     for stock in sell_list:
         trade_dict[stock] -= 1 * MABT_weight
-        
+    
     for pair in list(itertools.combinations(symbols, 2)):
         buy_list, sell_list = SP_strategy.action(data[1], pair[0], pair[1])
         for stock in buy_list:
@@ -83,7 +80,7 @@ start, end, interval = today_before(30), today(), '1h'
 symbols = ["042700.KS", "000660.KS", "005930.KS"]
 MABT_weight = 2
 SP_weight = 1.5
-TREND_BASIS = 1.7
+TREND_BASIS = 2.5
 trend_predictors = {}
 
 raw_data, symbols = utils.load_historical_datas(symbols, start, end, interval)
@@ -92,7 +89,7 @@ raw_data.drop(columns=[col for col in raw_data.columns if col.endswith('_Volume'
 
 for symbol in symbols:
     trend_predictors[symbol] = model.TrendPredictor(symbol, start, end, interval)
-    trend_predictors[symbol].fit()
+    print(trend_predictors[symbol].fit())
     
 client = kis.KISClient("Salmon Sk Samsung Hanmi")
 MABT = MABreakThrough()

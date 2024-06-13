@@ -85,6 +85,20 @@ def df_MACD(df, column):
 
 def determine_trend(df, column):
     # 1 up, 0 down
-    trend = [1 if df[column].iloc[i] > df[column].iloc[i-1] else 0 for i in range(1, len(df))]
+    trend = []
+    for i in range(1, len(df)):
+        price = df[column].iloc[i]
+        price_lag = df[column].iloc[i-1]
+        diff = price - price_lag
+        if diff > 0.2:
+            trend.append(3)
+        elif diff > 0:
+            trend.append(2)
+        elif diff > -0.15:
+            trend.append(1)
+        elif diff > -0.2:
+            trend.append(0)
+        else:
+            trend.append(-1)
     trend.insert(0, 0)
     return trend
