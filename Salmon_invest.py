@@ -50,7 +50,7 @@ def action(trend_predictors, data, symbols, MABT_weight, SP_weight, TREND_BASIS,
         trade_dict[symbol] = 0
         d = data[0][[symbol+"_Price"]].iloc[-trend_predictors[symbol].minimal_data_length-1:-1]
         trend = trend_predictors[symbol].predict(d, symbol)
-        basis[symbol] = trend * 0.5 * TREND_BASIS
+        basis[symbol] = trend * 0.3 * TREND_BASIS
         
     buy_list, sell_list = MABT_strategy.action(symbols, data[1])
     for stock in buy_list:
@@ -72,8 +72,10 @@ def action(trend_predictors, data, symbols, MABT_weight, SP_weight, TREND_BASIS,
             continue
         code = stock.split('.')[0]
         if amount > 0:
+            print(f'buy {stock} {ratio}')
             client.buy(code, data[1]["price"][stock+"_Price"], ratio)
         elif amount < 0:
+            print(f'sell {stock} {ratio}')
             client.sell(code, data[1]["price"][stock+"_Price"], ratio)
 
 start, end, interval = today_before(30), today(), '1h'
@@ -101,6 +103,8 @@ def schedule_job(trend_predictors, symbols, MABT_strategy, SP_strategy):
     global raw_data, MABT_weight, SP_weight, TREND_BASIS
     raw_data, processed_data = append_current_data(raw_data, symbols)
     action(trend_predictors, (raw_data, processed_data), symbols, MABT_weight, SP_weight, TREND_BASIS, MABT_strategy, SP_strategy)
+
+schedule_job(trend_predictors, symbols, MABT, SP)
 
 print("Running for ", symbols, " with Salmon strategy.")
 while True:

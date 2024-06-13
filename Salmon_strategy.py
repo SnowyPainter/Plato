@@ -54,7 +54,7 @@ while True:
         trade_dict[symbol] = 0
         if bar > trend_predictors[symbol].minimal_data_length:
             trend = trend_predictors[symbol].predict(raw[[symbol+"_Price", symbol+"_Volume"]].iloc[bar-trend_predictors[symbol].minimal_data_length:bar], symbol)
-            basis[symbol] = trend * 0.5 * config["BASIS"]
+            basis[symbol] = trend * 0.3 * config["BASIS"]
             
     buy_list, sell_list = MABT.action(symbols, data)
     for stock in buy_list:

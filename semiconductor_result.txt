@@ -1,9 +1,9 @@
-Trade Count : 83
-End Return : 106.59 % 
-Worst ~ Best return -0.13 ~ 106.59 % 
+Trade Count : 88
+End Return : 23.05 % 
+Worst ~ Best return 0.00 ~ 32.30 % 
 
-Sharp Ratio : 2.0679861193145674
+Sharp Ratio : 1.3467579704869515
 
-042700.KS Profit : 54.01 %
-000660.KS Profit : 721.57 %
-005930.KS Profit : 232.32 %
+042700.KS Profit : 1401.61 %
+000660.KS Profit : 300.89 %
+005930.KS Profit : 0.00 %

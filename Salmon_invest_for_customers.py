@@ -137,7 +137,7 @@ class TradingApp(QWidget):
             trade_dict[symbol] = 0
             d = self.raw_data[[symbol+"_Price"]].iloc[-self.trend_predictors[symbol].minimal_data_length-1:-1]
             trend = self.trend_predictors[symbol].predict(d, symbol)
-            basis[symbol] = trend * 0.5 * self.TREND_BIAS
+            basis[symbol] = trend * 0.3 * self.TREND_BIAS
         buy_list, sell_list = self.MABT_strategy.action(self.symbols, processed_data)
         for stock in buy_list:
             trade_dict[stock] += 1 * self.MABT_weight
@@ -182,17 +182,13 @@ class TradingApp(QWidget):
             raw, data, today = bt.go_next()
             if data == -1:
                 break
-            red_flags = []
             trade_dict = {}
             for symbol in symbols:
                 basis[symbol] = 0
                 trade_dict[symbol] = 0
                 if bar > trend_predictors[symbol].minimal_data_length:
                     trend = trend_predictors[symbol].predict(raw[[symbol+"_Price", symbol+"_Volume"]].iloc[bar-trend_predictors[symbol].minimal_data_length:bar], symbol)
-                    if trend == 1: #up
-                        basis[symbol] += TREND_BIAS
-                    elif trend == 0:
-                        red_flags.append(symbol)
+                    basis[symbol] = trend * 0.3 * TREND_BIAS
             buy_list, sell_list = MABT.action(symbols, data)
             for stock in buy_list:
                 trade_dict[stock] += 1 * MABT_weight
@@ -208,8 +204,6 @@ class TradingApp(QWidget):
 
             for stock, amount in trade_dict.items():
                 units = math.floor(abs(amount))
-                if stock in red_flags:
-                    continue
                 if amount > 0:
                     bt.buy(stock, 0.1 * (units + basis[stock]))
                 elif amount < 0:
