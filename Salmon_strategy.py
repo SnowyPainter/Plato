@@ -21,7 +21,7 @@ def process_data(raw, norm_raw, bar):
     }
 
 #한미반도체, SK하이닉스, 삼성전자
-symbols = ["042700.KS", "000660.KS", "005930.KS"]
+symbols = ["042700.KS", "000660.KS"]#, "005930.KS"]
 #symbols = input("종목 코드를 일렬로 입력(예: 042700.KS 000660.KS 005930.KS) : ").split(" ")
 
 trend_predictors = {}
@@ -59,7 +59,6 @@ while True:
                 basis[symbol] += config["BASIS"]
             elif trend == 0:
                 red_flags.append(symbol)
-    print(red_flags)
     buy_list, sell_list = MABT.action(symbols, data)
     for stock in buy_list:
         trade_dict[stock] += 1 * MABT_weight
@@ -85,5 +84,5 @@ while True:
     bar += 1
 
 bt.print_result('./semiconductor_result.txt')
-bt.plot_result()
+#bt.plot_result()
     
