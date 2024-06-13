@@ -98,6 +98,10 @@ client = kis.KISClient("Salmon Sk Samsung Hanmi")
 MABT = MABreakThrough()
 SP = StockPair()
 
+raw_data, processed_data = append_current_data(raw_data, symbols)
+action(trend_predictors, (raw_data, processed_data), symbols, MABT_weight, SP_weight, TREND_BASIS, MABT, SP)
+exit()
+
 def schedule_job(trend_predictors, symbols, MABT_strategy, SP_strategy):
     global raw_data, MABT_weight, SP_weight, TREND_BASIS
     raw_data, processed_data = append_current_data(raw_data, symbols)
