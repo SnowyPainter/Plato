@@ -156,13 +156,11 @@ class TradingApp(QWidget):
             for stock in sell_list:
                 trade_dict[stock] -= 1 * self.SP_weight
 
-        print("Trade : ", trade_dict)
-        print("Red Flags : ", red_flags)
         for stock, amount in trade_dict.items():
             units = math.floor(abs(amount))
             ratio = 0.1 * (units + basis[stock])
-            if stock in red_flags:
-                continue
+            #if stock in red_flags:
+            #    continue
             code = stock.split('.')[0]
             if amount > 0:
                 self.client.buy(code, processed_data["price"][stock+"_Price"], ratio)
