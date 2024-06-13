@@ -131,18 +131,13 @@ class TradingApp(QWidget):
     def execute_trading_strategy(self):
         print("Executing trading strategy at", self.today())
         self.raw_data, processed_data = self.append_current_data(self.raw_data, self.symbols)
-        red_flags = []
         trade_dict = {}
         basis = {}
         for symbol in self.symbols:
             trade_dict[symbol] = 0
-            basis[symbol] = 0
             d = self.raw_data[[symbol+"_Price"]].iloc[-self.trend_predictors[symbol].minimal_data_length-1:-1]
             trend = self.trend_predictors[symbol].predict(d, symbol)
-            if trend == 1: #up
-                basis[symbol] += self.TREND_BIAS
-            elif trend == 0:
-                red_flags.append(symbol)
+            basis[symbol] = trend * 0.5 * self.TREND_BIAS
         buy_list, sell_list = self.MABT_strategy.action(self.symbols, processed_data)
         for stock in buy_list:
             trade_dict[stock] += 1 * self.MABT_weight
@@ -159,8 +154,6 @@ class TradingApp(QWidget):
         for stock, amount in trade_dict.items():
             units = math.floor(abs(amount))
             ratio = 0.1 * (units + basis[stock])
-            #if stock in red_flags:
-            #    continue
             code = stock.split('.')[0]
             if amount > 0:
                 self.client.buy(code, processed_data["price"][stock+"_Price"], ratio)
