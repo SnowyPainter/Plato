@@ -211,7 +211,7 @@ class TradingApp(QWidget):
             
             bar += 1
 
-        bt.print_result(f'./{datetime.now()}.txt')
+        bt.print_result(f'./{datetime.now().strftime("%Y-%m-%d %H-%M-%S")}.txt')
         bt.plot_result()
     
 if __name__ == '__main__':
