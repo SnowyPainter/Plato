@@ -86,8 +86,9 @@ class TradingApp(QWidget):
         self.setLayout(self.layout)
         
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.check_market_and_execute)
-
+        self.timer.timeout.connect(self.execute_action)
+        self.daily_timer = QTimer(self)
+        self.daily_timer.timeout.connect(self.check_start_time)
         self.show()
     
     def on_submit(self):
@@ -105,13 +106,27 @@ class TradingApp(QWidget):
         for symbol in self.symbols:
             self.trend_predictors[symbol] = model.TrendPredictor(symbol, start, end, interval)
             print(self.trend_predictors[symbol].fit())
-            
-        self.timer.start(3600 * 1000)  # 1 hour in milliseconds
+
+        self.daily_timer.start(60000)
         self.submit_button.setText("Running")
         
-    def check_market_and_execute(self):
+    def execute_action(self):
         if self.client.is_market_open():
             self.execute_trading_strategy()
+        else:
+            self.timer.stop()
+    
+    def start_hourly_timer(self):
+        if self.client.is_market_open():
+            self.timer.start(3600000)  # 3600000 milliseconds = 1 hour
+            self.execute_action()  # Execute immediately upon starting
+        else:
+            print("Market is closed")
+
+    def check_start_time(self):
+        now = QTime.currentTime()
+        if now.hour() == 9 and now.minute() == 0:
+            self.start_hourly_timer()
     
     def execute_trading_strategy(self):
         print("Executing trading strategy at", self.today())
