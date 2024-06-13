@@ -62,6 +62,8 @@ class KISClient:
 
     def __init__(self, name):
         self.logger = logger.Logger(name)
+        if not os.path.exists('./settings'):
+            os.makedirs('./settings')
         self.trade_logger = logger.TradeLogger(f"./settings/{name}_Trades.csv")
         self.keys = self._read_config()
         if self.keys == -1:
