@@ -102,6 +102,13 @@ class KISClient:
             price = str(price),
             quantity = str(qty),
         )
+        if "초과" in resp['msg1'] and qty > 1:
+            resp = self.broker.create_limit_buy_order(
+                symbol = symbol,
+                price = str(price),
+                quantity = str(qty-1),
+            )
+            qty -= 1
         self.current_amount -= qty * price * (1 + 0.0025)
         if not (symbol in self.stocks_qty):
             self.stocks_qty[symbol] = 0

@@ -65,6 +65,7 @@ def action(trend_predictors, data, symbols, MABT_weight, SP_weight, TREND_BASIS,
         for stock in sell_list:
             trade_dict[stock] -= 1 * SP_weight
 
+    print(trade_dict)
     for stock, amount in trade_dict.items():
         units = math.floor(abs(amount))
         ratio = 0.1 * (units + basis[stock])
