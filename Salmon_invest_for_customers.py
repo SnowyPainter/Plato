@@ -4,6 +4,7 @@ from Alpha3.strategy import *
 import utils
 from Models import model
 import backtester
+import read_trades
 
 import pandas as pd
 import pytz
@@ -15,7 +16,8 @@ import time
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
 from PyQt5.QtCore import QTimer, QTime
-    
+
+
 class TradingApp(QWidget):
     def today(self, tz = 'Asia/Seoul'):
         return datetime.now(pytz.timezone(tz))
@@ -48,7 +50,8 @@ class TradingApp(QWidget):
             
     def __init__(self):
         super().__init__()
-        self.client = kis.KISClient("Salmon Sk Samsung Hanmi")
+        self.log_name = "Salmon Sk Samsung Hanmi"
+        self.client = kis.KISClient(self.log_name)
         self.MABT_strategy = MABreakThrough()
         self.SP_strategy = StockPair()
         
@@ -80,8 +83,12 @@ class TradingApp(QWidget):
         self.backtest_button = QPushButton('Backtest')
         self.backtest_button.clicked.connect(self.backtest)
         
+        self.show_trade_log_button = QPushButton("Show Log")
+        self.show_trade_log_button.clicked.connect(self.show_log)
+        
         self.layout.addWidget(self.submit_button)
         self.layout.addWidget(self.backtest_button)
+        self.layout.addWidget(self.show_trade_log_button)
         
         self.setLayout(self.layout)
         
@@ -154,11 +161,10 @@ class TradingApp(QWidget):
         for stock, amount in trade_dict.items():
             units = math.floor(abs(amount))
             ratio = 0.1 * (units + basis[stock])
-            code = stock.split('.')[0]
             if amount > 0:
-                self.client.buy(code, processed_data["price"][stock+"_Price"], ratio)
+                self.client.buy(stock, processed_data["price"][stock+"_Price"], ratio)
             elif amount < 0:
-                self.client.sell(code, processed_data["price"][stock+"_Price"], ratio)
+                self.client.sell(stock, processed_data["price"][stock+"_Price"], ratio)
 
     def backtest(self):
         self.symbols = self.symbol_input.text().split(' ')
@@ -213,6 +219,11 @@ class TradingApp(QWidget):
 
         bt.print_result(f'./{datetime.now().strftime("%Y-%m-%d %H-%M-%S")}.txt')
         bt.plot_result()
+    
+    def show_log(self):
+        trades = read_trades.read_trades_csv(f"./settings/{self.log_name}_Trades.csv")
+        df, symbols = read_trades.get_historical_same_size(trades)
+        read_trades.plot(trades, df, symbols)
     
 if __name__ == '__main__':
     app = QApplication(sys.argv)

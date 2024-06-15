@@ -71,13 +71,12 @@ def action(trend_predictors, data, symbols, MABT_weight, SP_weight, TREND_BASIS,
         ratio = 0.1 * (units + basis[stock])
         if stock in red_flags:
             continue
-        code = stock.split('.')[0]
         if amount > 0:
             print(f'buy {stock} {ratio}')
-            client.buy(code, data[1]["price"][stock+"_Price"], ratio)
+            client.buy(stock, data[1]["price"][stock+"_Price"], ratio)
         elif amount < 0:
             print(f'sell {stock} {ratio}')
-            client.sell(code, data[1]["price"][stock+"_Price"], ratio)
+            client.sell(stock, data[1]["price"][stock+"_Price"], ratio)
 
 start, end, interval = today_before(30), today(), '1h'
 symbols = ["042700.KS", "000660.KS", "005930.KS"]

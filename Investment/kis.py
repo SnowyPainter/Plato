@@ -94,43 +94,45 @@ class KISClient:
     
     def buy(self, symbol, price, ratio):
         price = int(price)
+        code = symbol.split('.')[0]
         qty = self._max_units_could_affordable(ratio, self.init_amount, self.current_amount, price, 0.0025)
         if qty == 0:
             return
         resp = self.broker.create_limit_buy_order(
-            symbol = symbol,
+            symbol = code,
             price = str(price),
             quantity = str(qty),
         )
         if "초과" in resp['msg1'] and qty > 1:
             resp = self.broker.create_limit_buy_order(
-                symbol = symbol,
+                symbol = code,
                 price = str(price),
                 quantity = str(qty-1),
             )
             qty -= 1
         self.current_amount -= qty * price * (1 + 0.0025)
-        if not (symbol in self.stocks_qty):
-            self.stocks_qty[symbol] = 0
-        self.stocks_qty[symbol] += qty
-        self.trade_logger.log("buy", str(symbol), qty, price, self.calculate_evaluated())
-        self.logger.log(f"Buy {symbol} - {qty}({ratio*100}%), price: {price}, {resp['msg1']} | current {self.current_amount}")
+        if not (code in self.stocks_qty):
+            self.stocks_qty[s] = 0
+        self.stocks_qty[code] += qty
+        self.trade_logger.log("buy", symbol, qty, price, self.calculate_evaluated())
+        self.logger.log(f"Buy {code} - {qty}({ratio*100}%), price: {price}, {resp['msg1']} | current {self.current_amount}")
         
     def sell(self, symbol, price, ratio):
-        if not (symbol in self.stocks_qty):
-            self.stocks_qty[symbol] = 0
+        code = symbol.split('.')[0]
+        if not (code in self.stocks_qty):
+            self.stocks_qty[s] = 0
         price = int(price)
-        qty = self._max_units_could_sell(ratio, self.init_amount, self.stocks_qty[symbol], price, 0.0025)
+        qty = self._max_units_could_sell(ratio, self.init_amount, self.stocks_qty[code], price, 0.0025)
         if qty == 0:
             return
         resp = self.broker.create_limit_sell_order(
-            symbol=symbol,
+            symbol=code,
             price=str(price),
             quantity=str(qty)
         )
         self.current_amount += qty * price * (1 - 0.0025)
-        if not (symbol in self.stocks_qty):
-            self.stocks_qty[symbol] = 0
-        self.stocks_qty[symbol] -= qty
-        self.trade_logger.log("sell", str(symbol), qty, price, self.calculate_evaluated())
-        self.logger.log(f"Sell {symbol} - {qty}({ratio*100}%), price: {price}, {resp['msg1']} | current {self.current_amount}")
+        if not (code in self.stocks_qty):
+            self.stocks_qty[s] = 0
+        self.stocks_qty[code] -= qty
+        self.trade_logger.log("sell", symbol, qty, price, self.calculate_evaluated())
+        self.logger.log(f"Sell {code} - {qty}({ratio*100}%), price: {price}, {resp['msg1']} | current {self.current_amount}")
