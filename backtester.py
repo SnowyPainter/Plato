@@ -33,6 +33,7 @@ class Backtester:
         self.fee = fee
         self.raw_data, symbols = utils.load_historical_datas(symbols, start, end, interval)
         self.symbols = symbols
+        self.start, self.end, self.interval = start, end, interval
         self.data_proc_func = data_proc_func
         self.portfolio_evaluates = []
         self.portfolio_returns = []
@@ -65,7 +66,8 @@ class Backtester:
         mean_return = np.mean(self.portfolio_returns)
         std_return = np.std(self.portfolio_returns)
         sharp_ratio = mean_return / std_return
-        text = f"Trade Count : {self.trade_count}\n"
+        text = f"Backtest range {self.start} ~ {self.end} : {self.interval} \n"
+        text += f"Trade Count : {self.trade_count}\n"
         text += f"End Return : {end_return * 100:.2f} % \n"
         text += f"Worst ~ Best return {worst_return * 100:.2f} ~ {best_return * 100:.2f} % \n\n"
         text += f"Sharp Ratio : {sharp_ratio}\n\n"
