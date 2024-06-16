@@ -20,9 +20,8 @@ def today_before(day, tz = 'Asia/Seoul'):
 
 THEMES = {
     "HBM" : 536,
-    "2차전지" : 446,
     "뉴로모픽" : 556,
-    "해운" : 36
+    "정유" : 185
 }
 
 def get_theme_stocks(theme_no):
