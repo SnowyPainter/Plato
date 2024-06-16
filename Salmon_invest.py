@@ -3,6 +3,7 @@ from Alpha1.strategy import *
 from Alpha3.strategy import *
 import utils
 from Models import model
+import backtester
 
 import itertools
 import pandas as pd
@@ -90,6 +91,46 @@ class SalmonInvest:
                 print(f'sell {stock} {ratio}')
                 self.client.sell(stock, self.current_data["price"][stock+"_Price"], ratio)
 
+    def backtest(self):
+        bt = backtester.Backtester(self.symbols, '2023-01-01', '2024-01-01', '1h', 1000000000, 0.0025, self._process_data)
+        bias = {}
+        bar = 0
+        while True:
+            raw, data, today = bt.go_next()
+            if data == -1:
+                break
+            trade_dict = {}
+            for symbol in self.symbols:
+                bias[symbol] = 0
+                trade_dict[symbol] = 0
+                if bar > self.trend_predictors[symbol].minimal_data_length:
+                    trend = self.trend_predictors[symbol].predict(raw[[symbol+"_Price", symbol+"_Volume"]].iloc[bar-self.trend_predictors[symbol].minimal_data_length:bar], symbol)
+                    bias[symbol] = trend * 0.3 * self.Trend_B
+            buy_list, sell_list = self.MABT.action(self.symbols, data)
+            for stock in buy_list:
+                trade_dict[stock] += 1 * self.MABT_W
+            for stock in sell_list:
+                trade_dict[stock] -= 1 * self.MABT_W
+            
+            for pair in list(itertools.combinations(self.symbols, 2)):
+                buy_list, sell_list = self.SP.action(data, pair[0], pair[1])
+                for stock in buy_list:
+                    trade_dict[stock] += 1 * self.SP_W
+                for stock in sell_list:
+                    trade_dict[stock] -= 1 * self.SP_W
+
+            for stock, amount in trade_dict.items():
+                units = math.floor(abs(amount))
+                if amount > 0:
+                    bt.buy(stock, 0.1 * (units + bias[stock]))
+                elif amount < 0:
+                    bt.sell(stock, 0.1 * (units + bias[stock]))
+            
+            bar += 1
+
+        bt.print_result()
+        bt.plot_result()
+    
 def test():
     symbols = ["042700.KS", "000660.KS", "005930.KS"]
     MABT_weight = 2
@@ -97,6 +138,8 @@ def test():
     TREND_BIAS = 2.5
         
     invest = SalmonInvest(symbols, MABT_W=MABT_weight, SP_W=SP_weight, Trend_B=TREND_BIAS)
-
+    invest.backtest()
     invest.append_current_data()
     invest.action()
+
+test()
