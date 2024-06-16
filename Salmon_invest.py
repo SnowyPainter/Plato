@@ -32,13 +32,6 @@ class SalmonInvest:
             "LMA" : LMA,
             "SMA" : SMA
         }
-
-    def _create_trend_predictors(self, symbols, start, end, interval):
-        trend_predictors = {}
-        for symbol in symbols:
-            trend_predictors[symbol] = model.TrendPredictor(symbol, start, end, interval)
-            print(trend_predictors[symbol].fit())
-        return trend_predictors
     
     def _create_init_data(self, symbols, start, end, interval):
         raw_data, symbols = utils.load_historical_datas(symbols, start, end, interval)
@@ -57,7 +50,7 @@ class SalmonInvest:
         self.symbols = yfsymbols
         start, end, interval = utils.today_before(day_before), utils.today(), '1h'
         self.raw_data = self._create_init_data(yfsymbols, start, end, interval)
-        self.trend_predictors = self._create_trend_predictors(yfsymbols, start, end, interval)
+        self.trend_predictors = model.create_trend_predictors(yfsymbols, start, end, interval)
     
     def append_current_data(self):
         df = self._get_current_prices(self.symbols)

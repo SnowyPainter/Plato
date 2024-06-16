@@ -40,3 +40,10 @@ class TrendPredictor:
         df = self._prepare_data(raw_df, symbol)
         df = np.array([df.iloc[-1]])
         return self.model.predict(df)
+    
+def create_trend_predictors(symbols, start, end, interval):
+    trend_predictors = {}
+    for symbol in symbols:
+        trend_predictors[symbol] = TrendPredictor(symbol, start, end, interval)
+        print(trend_predictors[symbol].fit())
+    return trend_predictors

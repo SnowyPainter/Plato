@@ -1,4 +1,5 @@
 from Alpha4.strategy import *
+from Models import model
 import backtester
 import utils
 
@@ -14,20 +15,20 @@ class StepperInvest:
             "norm_price" : norm_raw[price_columns].iloc[bar],
             "price" : raw[price_columns].iloc[bar],
         }
-
+    
     def __init__(self, symbols, day_before, interval):
         self.symbols = symbols
         self.BSR = BollingerSplitReversal()
         
     def backtest(self):
         bt = backtester.Backtester(self.symbols, '2023-01-01', '2024-01-01', '1h', 10000000, 0.0025, self.process_data)
-        
         bar = 0
         while True:
             raw, data, today = bt.go_next()
             if data == -1:
                 break
-            
+
+            trade_strengths = {}
             if bar >= self.BSR.minimal_window:
                 bands = {}
                 for symbol in self.symbols:
@@ -37,19 +38,19 @@ class StepperInvest:
                     bands[symbol]['lb'] = lb.iloc[bar]
                     bands[symbol]['mid'] = mid.iloc[bar]
                 trade_strengths = self.BSR.action(self.symbols, data, bands)
-                for symbol, strength in trade_strengths.items():
-                    alpha_ratio = abs((strength / data['price'][symbol+"_Price"]) * 50)
-                    if strength > 0:
-                        bt.buy(symbol, alpha_ratio)
-                    elif strength < 0:
-                        bt.sell(symbol, alpha_ratio)
-                    
+            
+            for symbol, strength in trade_strengths.items():
+                alpha_ratio = abs((strength / data['price'][symbol+"_Price"])) * 2
+                if strength > 0:
+                    bt.buy(symbol, alpha_ratio)
+                elif strength < 0:
+                    bt.sell(symbol, alpha_ratio)
+        
             bar += 1
         bt.print_result()
         bt.plot_result()
 
-#한미반도체, SK하이닉스, 삼성전자
-symbols = ["042700.KS", "000660.KS", "005930.KS"]
+long_symbols = ["NVDA", "AVGO", "MU"]
 
-invester = StepperInvest(symbols, 30, '1h')
+invester = StepperInvest(long_symbols, 30, '1h')
 invester.backtest()
