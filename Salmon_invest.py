@@ -141,5 +141,3 @@ def test():
     invest.backtest()
     invest.append_current_data()
     invest.action()
-
-test()
