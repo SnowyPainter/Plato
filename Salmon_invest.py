@@ -6,113 +6,104 @@ from Models import model
 
 import itertools
 import pandas as pd
-import pytz
 import math
 import schedule
 from datetime import datetime, timedelta
 import time
 import sys
 
-def today(tz = 'Asia/Seoul'):
-    return datetime.now(pytz.timezone(tz))
-def today_before(day, tz = 'Asia/Seoul'):
-    return datetime.now(pytz.timezone(tz)) - timedelta(days=day)
+class SalmonInvest:
 
-def current_prices(symbols):
-    df = {}
-    for symbol in symbols:
-        code = symbol.split('.')[0]
-        df[symbol+"_Price"] = client.get_price(code)
-    df = pd.DataFrame(df, index=[datetime.now()])
-    return df
+    def _get_current_prices(self, symbols):
+        df = {}
+        for symbol in symbols:
+            code = symbol.split('.')[0]
+            df[symbol+"_Price"] = self.client.get_price(code)
+        df = pd.DataFrame(df, index=[datetime.now()])
+        return df
 
-def process_data(raw, norm_raw, bar):
-    price_columns = list(map(lambda symbol: symbol+"_Price", symbols))
-    LMA = norm_raw[price_columns].rolling(50).mean().iloc[bar]
-    SMA = norm_raw[price_columns].rolling(14).mean().iloc[bar]
-    return {
-        "norm_price" : norm_raw[price_columns].iloc[bar],
-        "price" : raw[price_columns].iloc[bar],
-        "LMA" : LMA,
-        "SMA" : SMA
-    }
+    def _process_data(self, raw, norm_raw, bar):
+        price_columns = list(map(lambda symbol: symbol+"_Price", self.symbols))
+        LMA = norm_raw[price_columns].rolling(50).mean().iloc[bar]
+        SMA = norm_raw[price_columns].rolling(14).mean().iloc[bar]
+        return {
+            "norm_price" : norm_raw[price_columns].iloc[bar],
+            "price" : raw[price_columns].iloc[bar],
+            "LMA" : LMA,
+            "SMA" : SMA
+        }
 
-def append_current_data(raw_data, symbols):
-    df = current_prices(symbols)
-    raw_data = pd.concat([raw_data, df])
-    return raw_data, process_data(raw_data, utils.normalize(raw_data), -1)
-
-def action(trend_predictors, data, symbols, MABT_weight, SP_weight, TREND_BASIS, MABT_strategy, SP_strategy):
-    red_flags = []
-    trade_dict = {}
-    basis = {}
-    for symbol in symbols:
-        trade_dict[symbol] = 0
-        d = data[0][[symbol+"_Price"]].iloc[-trend_predictors[symbol].minimal_data_length-1:-1]
-        trend = trend_predictors[symbol].predict(d, symbol)
-        basis[symbol] = trend * 0.3 * TREND_BASIS
+    def _create_trend_predictors(self, symbols, start, end, interval):
+        trend_predictors = {}
+        for symbol in symbols:
+            trend_predictors[symbol] = model.TrendPredictor(symbol, start, end, interval)
+            print(trend_predictors[symbol].fit())
+        return trend_predictors
+    
+    def _create_init_data(self, symbols, start, end, interval):
+        raw_data, symbols = utils.load_historical_datas(symbols, start, end, interval)
+        raw_data.index = pd.to_datetime(raw_data.index).tz_localize(None)
+        raw_data.drop(columns=[col for col in raw_data.columns if col.endswith('_Volume')], inplace=True)
+        return raw_data
+    
+    def __init__(self, yfsymbols, MABT_W, SP_W, Trend_B, day_before=30):
+        self.client = kis.KISClient(yfsymbols[0])
+        self.MABT = MABreakThrough()
+        self.SP = StockPair()
+        self.MABT_W = MABT_W
+        self.SP_W = SP_W
+        self.Trend_B = Trend_B
         
-    buy_list, sell_list = MABT_strategy.action(symbols, data[1])
-    for stock in buy_list:
-        trade_dict[stock] += 1 * MABT_weight
-    for stock in sell_list:
-        trade_dict[stock] -= 1 * MABT_weight
+        self.symbols = yfsymbols
+        start, end, interval = utils.today_before(day_before), utils.today(), '1h'
+        self.raw_data = self._create_init_data(yfsymbols, start, end, interval)
+        self.trend_predictors = self._create_trend_predictors(yfsymbols, start, end, interval)
     
-    for pair in list(itertools.combinations(symbols, 2)):
-        buy_list, sell_list = SP_strategy.action(data[1], pair[0], pair[1])
+    def append_current_data(self):
+        df = self._get_current_prices(self.symbols)
+        self.raw_data = pd.concat([self.raw_data, df])
+        self.current_data = self._process_data(self.raw_data, utils.normalize(self.raw_data), -1)
+    
+    def action(self):
+        trade_dict = {}
+        bias = {}
+        for symbol in self.symbols:
+            trade_dict[symbol] = 0
+            d = self.raw_data[[symbol+"_Price"]].iloc[-self.trend_predictors[symbol].minimal_data_length-1:-1]
+            trend = self.trend_predictors[symbol].predict(d, symbol)
+            bias[symbol] = trend * 0.3 * self.Trend_B
+            
+        buy_list, sell_list = self.MABT.action(self.symbols, self.current_data)
         for stock in buy_list:
-            trade_dict[stock] += 1 * SP_weight
+            trade_dict[stock] += 1 * self.MABT_W
         for stock in sell_list:
-            trade_dict[stock] -= 1 * SP_weight
+            trade_dict[stock] -= 1 * self.MABT_W
+        
+        for pair in list(itertools.combinations(self.symbols, 2)):
+            buy_list, sell_list = self.SP.action(self.current_data, pair[0], pair[1])
+            for stock in buy_list:
+                trade_dict[stock] += 1 * self.SP_W
+            for stock in sell_list:
+                trade_dict[stock] -= 1 * self.SP_W
 
-    print(trade_dict)
-    for stock, amount in trade_dict.items():
-        units = math.floor(abs(amount))
-        ratio = 0.1 * (units + basis[stock])
-        if stock in red_flags:
-            continue
-        if amount > 0:
-            print(f'buy {stock} {ratio}')
-            client.buy(stock, data[1]["price"][stock+"_Price"], ratio)
-        elif amount < 0:
-            print(f'sell {stock} {ratio}')
-            client.sell(stock, data[1]["price"][stock+"_Price"], ratio)
+        print(trade_dict)
+        for stock, amount in trade_dict.items():
+            units = math.floor(abs(amount))
+            ratio = 0.1 * (units + bias[stock])
+            if amount > 0:
+                print(f'buy {stock} {ratio}')
+                self.client.buy(stock, self.current_data["price"][stock+"_Price"], ratio)
+            elif amount < 0:
+                print(f'sell {stock} {ratio}')
+                self.client.sell(stock, self.current_data["price"][stock+"_Price"], ratio)
 
-start, end, interval = today_before(30), today(), '1h'
-symbols = ["042700.KS", "000660.KS", "005930.KS"]
-MABT_weight = 2
-SP_weight = 1.5
-TREND_BASIS = 2.5
-trend_predictors = {}
+def test():
+    symbols = ["042700.KS", "000660.KS", "005930.KS"]
+    MABT_weight = 2
+    SP_weight = 1.5
+    TREND_BIAS = 2.5
+        
+    invest = SalmonInvest(symbols, MABT_W=MABT_weight, SP_W=SP_weight, Trend_B=TREND_BIAS)
 
-raw_data, symbols = utils.load_historical_datas(symbols, start, end, interval)
-raw_data.index = pd.to_datetime(raw_data.index).tz_localize(None)
-raw_data.drop(columns=[col for col in raw_data.columns if col.endswith('_Volume')], inplace=True)
-
-for symbol in symbols:
-    trend_predictors[symbol] = model.TrendPredictor(symbol, start, end, interval)
-    print(trend_predictors[symbol].fit())
-    
-client = kis.KISClient("Salmon Sk Samsung Hanmi")
-MABT = MABreakThrough()
-SP = StockPair()
-
-raw_data, processed_data = append_current_data(raw_data, symbols)
-
-def schedule_job(trend_predictors, symbols, MABT_strategy, SP_strategy):
-    global raw_data, MABT_weight, SP_weight, TREND_BASIS
-    raw_data, processed_data = append_current_data(raw_data, symbols)
-    action(trend_predictors, (raw_data, processed_data), symbols, MABT_weight, SP_weight, TREND_BASIS, MABT_strategy, SP_strategy)
-
-schedule_job(trend_predictors, symbols, MABT, SP)
-
-print("Running for ", symbols, " with Salmon strategy.")
-while True:
-    if client.is_market_open():
-        schedule.every(1).hour.do(schedule_job, trend_predictors, symbols, MABT, SP)
-        while client.is_market_open():
-            schedule.run_pending()
-            time.sleep(1)
-        schedule.clear()
-        print("Market is Closed")
-    time.sleep(60)
+    invest.append_current_data()
+    invest.action()

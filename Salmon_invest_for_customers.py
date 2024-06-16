@@ -5,6 +5,7 @@ import utils
 from Models import model
 import backtester
 import read_trades
+import Salmon_invest
 
 import pandas as pd
 import pytz
@@ -14,24 +15,12 @@ import schedule
 from datetime import datetime, timedelta
 import time
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QFileDialog
 from PyQt5.QtCore import QTimer, QTime
 
+#042700.KS 000660.KS 005930.KS
 
-class TradingApp(QWidget):
-    def today(self, tz = 'Asia/Seoul'):
-        return datetime.now(pytz.timezone(tz))
-    def today_before(self, day, tz = 'Asia/Seoul'):
-        return datetime.now(pytz.timezone(tz)) - timedelta(days=day)
-
-    def current_prices(self, symbols):
-        df = {}
-        for symbol in symbols:
-            code = symbol.split('.')[0]
-            df[symbol+"_Price"] = self.client.get_price(code)
-        df = pd.DataFrame(df, index=[datetime.now()])
-        return df
-
+class TradingApp(QWidget): 
     def process_data(self, raw, norm_raw, bar):
         price_columns = list(map(lambda symbol: symbol+"_Price", self.symbols))
         LMA = norm_raw[price_columns].rolling(50).mean().iloc[bar]
@@ -43,18 +32,8 @@ class TradingApp(QWidget):
             "SMA" : SMA
         }
 
-    def append_current_data(self, raw_data, symbols):
-        df = self.current_prices(symbols)
-        raw_data = pd.concat([raw_data, df])
-        return raw_data, self.process_data(raw_data, utils.normalize(raw_data), -1)
-            
     def __init__(self):
         super().__init__()
-        self.log_name = "Salmon Sk Samsung Hanmi"
-        self.client = kis.KISClient(self.log_name)
-        self.MABT_strategy = MABreakThrough()
-        self.SP_strategy = StockPair()
-        
         self.layout = QVBoxLayout()
         
         self.symbol_label = QLabel('Symbols :')
@@ -96,6 +75,9 @@ class TradingApp(QWidget):
         self.timer.timeout.connect(self.execute_action)
         self.daily_timer = QTimer(self)
         self.daily_timer.timeout.connect(self.check_start_time)
+        
+        self.symbols = []
+        
         self.show()
     
     def on_submit(self):
@@ -104,16 +86,9 @@ class TradingApp(QWidget):
         self.SP_weight = float(self.sp_input.text())
         self.TREND_BIAS = float(self.trend_bias_input.text())
         QMessageBox.information(self, "Submit, ", f"Symbols: {self.symbols}\nSMA BO W: {self.MABT_weight}\nPT W: {self.SP_weight}\nTrend B : {self.TREND_BIAS}")
-        self.trend_predictors = {}
-        start, end, interval = self.today_before(30), self.today(), '1h'
-        self.raw_data, self.symbols = utils.load_historical_datas(self.symbols, start, end, interval)
-        self.raw_data.index = pd.to_datetime(self.raw_data.index).tz_localize(None)
-        self.raw_data.drop(columns=[col for col in self.raw_data.columns if col.endswith('_Volume')], inplace=True)
-
-        for symbol in self.symbols:
-            self.trend_predictors[symbol] = model.TrendPredictor(symbol, start, end, interval)
-            print(self.trend_predictors[symbol].fit())
-
+        
+        self.invester = Salmon_invest.SalmonInvest(self.symbols, self.MABT_weight, self.SP_weight, self.TREND_BIAS, 30)
+        
         self.daily_timer.start(60000)
         self.submit_button.setText("Running")
         
@@ -137,34 +112,8 @@ class TradingApp(QWidget):
     
     def execute_trading_strategy(self):
         print("Executing trading strategy at", self.today())
-        self.raw_data, processed_data = self.append_current_data(self.raw_data, self.symbols)
-        trade_dict = {}
-        basis = {}
-        for symbol in self.symbols:
-            trade_dict[symbol] = 0
-            d = self.raw_data[[symbol+"_Price"]].iloc[-self.trend_predictors[symbol].minimal_data_length-1:-1]
-            trend = self.trend_predictors[symbol].predict(d, symbol)
-            basis[symbol] = trend * 0.3 * self.TREND_BIAS
-        buy_list, sell_list = self.MABT_strategy.action(self.symbols, processed_data)
-        for stock in buy_list:
-            trade_dict[stock] += 1 * self.MABT_weight
-        for stock in sell_list:
-            trade_dict[stock] -= 1 * self.MABT_weight
-            
-        for pair in list(itertools.combinations(self.symbols, 2)):
-            buy_list, sell_list = self.SP_strategy.action(processed_data, pair[0], pair[1])
-            for stock in buy_list:
-                trade_dict[stock] += 1 * self.SP_weight
-            for stock in sell_list:
-                trade_dict[stock] -= 1 * self.SP_weight
-
-        for stock, amount in trade_dict.items():
-            units = math.floor(abs(amount))
-            ratio = 0.1 * (units + basis[stock])
-            if amount > 0:
-                self.client.buy(stock, processed_data["price"][stock+"_Price"], ratio)
-            elif amount < 0:
-                self.client.sell(stock, processed_data["price"][stock+"_Price"], ratio)
+        self.invester.append_current_data()
+        self.invester.action()
 
     def backtest(self):
         self.symbols = self.symbol_input.text().split(' ')
@@ -177,12 +126,12 @@ class TradingApp(QWidget):
             trend_predictors[symbol] = model.TrendPredictor(symbol, '2023-05-01', '2024-06-12', '1h')
             trend_predictors[symbol].fit()
 
-        bt = backtester.Backtester(symbols, '2023-01-01', '2024-01-01', '1d', 1000000000, 0.0025, self.process_data)
+        bt = backtester.Backtester(symbols, '2023-01-01', '2024-01-01', '1h', 1000000000, 0.0025, self.process_data)
         symbols = bt.symbols
         MABT = MABreakThrough()
         SP = StockPair()
 
-        basis = {}
+        bias = {}
         bar = 0
         while True:
             raw, data, today = bt.go_next()
@@ -190,11 +139,11 @@ class TradingApp(QWidget):
                 break
             trade_dict = {}
             for symbol in symbols:
-                basis[symbol] = 0
+                bias[symbol] = 0
                 trade_dict[symbol] = 0
                 if bar > trend_predictors[symbol].minimal_data_length:
                     trend = trend_predictors[symbol].predict(raw[[symbol+"_Price", symbol+"_Volume"]].iloc[bar-trend_predictors[symbol].minimal_data_length:bar], symbol)
-                    basis[symbol] = trend * 0.3 * TREND_BIAS
+                    bias[symbol] = trend * 0.3 * TREND_BIAS
             buy_list, sell_list = MABT.action(symbols, data)
             for stock in buy_list:
                 trade_dict[stock] += 1 * MABT_weight
@@ -211,9 +160,9 @@ class TradingApp(QWidget):
             for stock, amount in trade_dict.items():
                 units = math.floor(abs(amount))
                 if amount > 0:
-                    bt.buy(stock, 0.1 * (units + basis[stock]))
+                    bt.buy(stock, 0.1 * (units + bias[stock]))
                 elif amount < 0:
-                    bt.sell(stock, 0.1 * (units + basis[stock]))
+                    bt.sell(stock, 0.1 * (units + bias[stock]))
             
             bar += 1
 
@@ -221,9 +170,11 @@ class TradingApp(QWidget):
         bt.plot_result()
     
     def show_log(self):
-        trades = read_trades.read_trades_csv(f"./settings/{self.log_name}_Trades.csv")
-        df, symbols = read_trades.get_historical_same_size(trades)
-        read_trades.plot(trades, df, symbols)
+        path = QFileDialog.getOpenFileName(self, 'Trades File', './', "CSV Files (*.csv)")
+        if path != ('', ''):
+            trades = read_trades.read_trades_csv(path[0])
+            df, symbols = read_trades.get_historical_same_size(trades)
+            read_trades.plot(trades, df, symbols)
     
 if __name__ == '__main__':
     app = QApplication(sys.argv)

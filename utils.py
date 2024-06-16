@@ -4,12 +4,19 @@ import requests
 import yfinance as yf
 from scipy.stats.mstats import winsorize
 import numpy as np
+from datetime import datetime, timedelta
+import pytz
 
 def merge_dfs(dfs):
     merged = dfs[0]
     for i in range(1, len(dfs)):
         merged = merged.join(dfs[i])
     return merged
+
+def today(tz = 'Asia/Seoul'):
+        return datetime.now(pytz.timezone(tz))
+def today_before(day, tz = 'Asia/Seoul'):
+    return datetime.now(pytz.timezone(tz)) - timedelta(days=day)
 
 THEMES = {
     "HBM" : 536,
