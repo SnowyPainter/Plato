@@ -26,13 +26,13 @@ tables = Columns(tables)
 
 portfolios = {
     "1" : {
-        "name" : "기술주",
+        "name" : "HBM 기술주1",
         "portfolio" : ["042700.KS", "000660.KS", "005930.KS"],
         "exchange" : 'krx'
     },
     "2" : {
-        "name" : "삼성 제외 기술주",
-        "portfolio" : ["042700.KS", "000660.KS"],
+        "name" : "HBM 기술주2",
+        "portfolio" : ["042700.KS", "000660.KS", "012450.KS"],
         "exchange" : 'krx'
     },
     "3" : {
