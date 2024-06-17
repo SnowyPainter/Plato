@@ -1,4 +1,4 @@
-from Investment import kis
+from Investment import kis, nasdaq
 from Alpha1.strategy import *
 from Alpha3.strategy import *
 import utils
@@ -40,8 +40,12 @@ class SalmonInvest:
         raw_data.drop(columns=[col for col in raw_data.columns if col.endswith('_Volume')], inplace=True)
         return raw_data
     
-    def __init__(self, yfsymbols, MABT_W, SP_W, Trend_B, day_before=30):
-        self.client = kis.KISClient(yfsymbols[0])
+    def __init__(self, yfsymbols, MABT_W, SP_W, Trend_B, day_before=30, exchange='krx'):
+        if exchange == 'nyse':
+            self.client = nasdaq.NasdaqClient(symbols[0])
+        elif exchange == 'krx':
+            self.client = kis.KISClient(symbols[0])
+        
         self.MABT = MABreakThrough()
         self.SP = StockPair()
         self.MABT_W = MABT_W

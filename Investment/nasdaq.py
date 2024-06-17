@@ -51,7 +51,7 @@ class NasdaqClient:
         else:
             return current_units
     
-    def __init__(self, name):
+    def __init__(self, name, exchange='나스닥'):
         self.logger = logger.Logger(name)
         if not os.path.exists('./settings'):
             os.makedirs('./settings')
@@ -61,7 +61,8 @@ class NasdaqClient:
             self.logger.log("Failed to load ./settings/keys.ini")
             exit()
         
-        self.broker = mojito.KoreaInvestment(api_key=self.keys["APIKEY"], api_secret=self.keys["APISECRET"], acc_no=self.keys["ACCNO"], exchange='나스닥', mock=False)
+        self.broker = mojito.KoreaInvestment(api_key=self.keys["APIKEY"], api_secret=self.keys["APISECRET"], acc_no=self.keys["ACCNO"], exchange=exchange, mock=False)
+
         self.init_amount, self.current_amount, self.stocks_qty, self.stocks_avg_price = self._get_balance()
         self.logger.log(f"Loading balance ...")
         self.logger.log(f"Initial Amount : {self.init_amount}")
@@ -70,8 +71,8 @@ class NasdaqClient:
             self.logger.log(f"{stock} : {qty} - {self.stocks_avg_price[stock]}")
 
     def get_price(self, symbol):
-        t = yf.Ticker(symbol)
-        return t.info.get('currentPrice')
+        resp = self.broker.fetch_price(symbol)
+        return float(resp['output']['stck_prpr'])
     
     def calculate_evaluated(self):
         evaluate_stocks = 0
@@ -81,44 +82,42 @@ class NasdaqClient:
     
     def buy(self, symbol, price, ratio):
         price = float(price)
-        code = symbol.split('.')[0]
         qty = self._max_units_could_affordable(ratio, self.init_amount, self.current_amount, price, 0.0025)
         if qty == 0:
             return
         resp = self.broker.create_limit_buy_order(
-            symbol = code,
+            symbol = symbol,
             price = str(price),
             quantity = str(qty),
         )
         if "초과" in resp['msg1'] and qty > 1:
             resp = self.broker.create_limit_buy_order(
-                symbol = code,
+                symbol = symbol,
                 price = str(price),
                 quantity = str(qty-1),
             )
             qty -= 1
         self.current_amount -= qty * price * (1 + 0.0025)
-        if not (code in self.stocks_qty):
-            self.stocks_qty[code] = 0
-        self.stocks_qty[code] += qty
+        if not (symbol in self.stocks_qty):
+            self.stocks_qty[symbol] = 0
+        self.stocks_qty[symbol] += qty
         self.trade_logger.log("buy", symbol, qty, price, self.calculate_evaluated())
-        self.logger.log(f"Buy {code} - {qty}({ratio*100}%), price: {price}, {resp['msg1']} | current {self.current_amount}")
+        self.logger.log(f"Buy {symbol} - {qty}({ratio*100}%), price: {price}, {resp['msg1']} | current {self.current_amount}")
         
     def sell(self, symbol, price, ratio):
-        code = symbol.split('.')[0]
-        if not (code in self.stocks_qty):
-            self.stocks_qty[code] = 0
+        if not (symbol in self.stocks_qty):
+            self.stocks_qty[symbol] = 0
             return
         price = float(price)
-        qty = self._max_units_could_sell(ratio, self.init_amount, self.stocks_qty[code], price, 0.0025)
+        qty = self._max_units_could_sell(ratio, self.init_amount, self.stocks_qty[symbol], price, 0.0025)
         if qty == 0:
             return
         resp = self.broker.create_limit_buy_order(
-            symbol=code,
+            symbol=symbol,
             price=str(price),
             quantity=str(qty)
         )
         self.current_amount += qty * price * (1 - 0.0025)
-        self.stocks_qty[code] -= qty
+        self.stocks_qty[symbol] -= qty
         self.trade_logger.log("sell", symbol, qty, price, self.calculate_evaluated())
-        self.logger.log(f"Sell {code} - {qty}({ratio*100}%), price: {price}, {resp['msg1']} | current {self.current_amount}")
+        self.logger.log(f"Sell {symbol} - {qty}({ratio*100}%), price: {price}, {resp['msg1']} | current {self.current_amount}")

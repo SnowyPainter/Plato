@@ -25,13 +25,32 @@ for theme_name, no in utils.THEMES.items():
 tables = Columns(tables)
 
 portfolios = {
-    "1" : ["042700.KS", "000660.KS", "005930.KS"],
+    "1" : {
+        "name" : "기술주",
+        "portfolio" : ["042700.KS", "000660.KS", "005930.KS"],
+        "exchange" : 'krx'
+    },
+    "2" : {
+        "name" : "삼성 제외 기술주",
+        "portfolio" : ["042700.KS", "000660.KS"],
+        "exchange" : 'krx'
+    },
+    "3" : {
+        "name" : "방산",
+        "portfolio" : ["012450.KS", "064350.KS"],
+        "exchange" : 'krx'
+    },
+    "4" : {
+        "name" : "해외 반도체",
+        "portfolio" : ["TSM", "MU"],
+        "exchange" : 'nyse'
+    }
 }
 
 portfolio_table = Table("포트폴리오 선택")
 
-for name, codes in portfolios.items():
-    portfolio_table.add_row(name, *codes)
+for no, body in portfolios.items():
+    portfolio_table.add_row(no+" "+body['name'], *body['portfolio'])
 
 strategy_table = Table("전략 선택")
 file_list = os.listdir('.')
@@ -57,9 +76,9 @@ for info in strategy_needs[strategy]:
     weights.append(float(input(f"{info} : ")))
 invester = None
 if strategy == "1":
-    invester = Salmon_invest.SalmonInvest(portfolios[portfolio], weights[0], weights[1], weights[2])
+    invester = Salmon_invest.SalmonInvest(portfolios[portfolio]['portfolio'], weights[0], weights[1], weights[2], exchange=portfolios[portfolio]['exchange'])
 elif strategy == "2":
-    invester = Swinger_invest.SwingerInvest(portfolios[portfolio], weights[1], weights[0])
+    invester = Swinger_invest.SwingerInvest(portfolios[portfolio]['portfolio'], weights[1], weights[0], exchange=portfolios[portfolio]['exchange'])
 
 if invester == None:
     print("유효한 전략을 선택하세요.")
@@ -76,7 +95,7 @@ choice = input("입력 : ")
 if choice == "1":
     invester.backtest()
 elif choice == "2":
-    print(f"{portfolios[portfolio]}에 대해 {strategy_names[int(strategy) - 1]} 전략을 가동합니다.")
+    print(f"{portfolios[portfolio]['name']}에 대해 {strategy_names[int(strategy) - 1]} 전략을 가동합니다.")
     for hour in range(9, 16):
         schedule.every().day.at(f"{hour:02d}:00").do(action)
     schedule.every().day.at("15:30").do(action)

@@ -3,7 +3,7 @@ from Alpha4.strategy import *
 from Models import model
 import backtester
 import utils
-from Investment import kis
+from Investment import kis, nasdaq
 
 from datetime import datetime
 import itertools
@@ -29,8 +29,11 @@ class SwingerInvest:
         raw_data.drop(columns=[col for col in raw_data.columns if col.endswith('_Volume')], inplace=True)
         return raw_data
 
-    def __init__(self, symbols, SP_weight, Band_weight):
-        self.client = kis.KISClient(symbols[0])
+    def __init__(self, symbols, SP_weight, Band_weight, exchange='krx'):
+        if exchange == 'nyse':
+            self.client = nasdaq.NasdaqClient(symbols[0])
+        elif exchange == 'krx':
+            self.client = kis.KISClient(symbols[0])
         
         self.symbols = symbols
         self.BSR = BollingerSplitReversal()
@@ -75,8 +78,10 @@ class SwingerInvest:
         for stock, score in trade_dict.items():
             alpha_ratio = abs(0.1 * score)
             if score > 0:
+                print(f"buy {stock} {alpha_ratio}")
                 self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
             elif score < 0:
+                print(f"sell {stock} {alpha_ratio}")
                 self.client.sell(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
         
     def backtest(self):
@@ -134,7 +139,7 @@ def bt():
     invester = SwingerInvest(phi2, SPW, BW)
     invester.backtest()
 def test():
-    invester = SwingerInvest(long_symbols, SPW, BW)
-    for i in range(0, 10):
+    invester = SwingerInvest(phi3, SPW, BW, exchange='nyse')
+    for i in range(0, 2):
         invester.append_current_data()
         invester.action()
