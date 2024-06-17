@@ -39,11 +39,6 @@ portfolios = {
         "name" : "방산",
         "portfolio" : ["012450.KS", "064350.KS"],
         "exchange" : 'krx'
-    },
-    "4" : {
-        "name" : "해외 반도체",
-        "portfolio" : ["TSM", "MU"],
-        "exchange" : 'nyse'
     }
 }
 
