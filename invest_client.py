@@ -92,8 +92,8 @@ if choice == "1":
 elif choice == "2":
     print(f"{portfolios[portfolio]['name']}에 대해 {strategy_names[int(strategy) - 1]} 전략을 가동합니다.")
     for hour in range(9, 16):
-        schedule.every().day.at(f"{hour:02d}:00").do(action)
-    schedule.every().day.at("15:30").do(action)
+        schedule.every().day.at(f"{hour:02d}:01").do(action)
+    schedule.every().day.at("15:29").do(action)
     while True:
         schedule.run_pending()
         time.sleep(1)

@@ -139,7 +139,7 @@ def bt():
     invester = SwingerInvest(phi2, SPW, BW)
     invester.backtest()
 def test():
-    invester = SwingerInvest(phi3, SPW, BW, exchange='nyse')
+    invester = SwingerInvest(long_symbols, SPW, BW, exchange='krx')
     for i in range(0, 2):
         invester.append_current_data()
         invester.action()

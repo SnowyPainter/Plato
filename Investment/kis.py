@@ -2,6 +2,7 @@ from datetime import datetime
 import mojito
 import math
 import os
+import time
 import configparser
 
 import logger
@@ -75,7 +76,10 @@ class KISClient:
         return (now.hour >= 9) and (now.hour <= 15 and now.minute <= 30)
     
     def get_price(self, symbol):
+        time.sleep(0.1)
         resp = self.broker.fetch_price(symbol)
+        if not 'output' in resp:
+            return self.get_price(symbol)
         return float(resp['output']['stck_prpr'])
     
     def calculate_evaluated(self):
