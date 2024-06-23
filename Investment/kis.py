@@ -78,6 +78,7 @@ class KISClient:
     def get_price(self, symbol):
         time.sleep(0.1)
         resp = self.broker.fetch_price(symbol)
+        print(symbol, resp)
         if not 'output' in resp:
             return self.get_price(symbol)
         return float(resp['output']['stck_prpr'])

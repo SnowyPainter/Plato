@@ -3,3 +3,4 @@ settings/keys.ini
 log/
 *.dat
 settings/*.csv
+test.py
