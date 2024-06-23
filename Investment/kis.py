@@ -42,8 +42,10 @@ class KISClient:
         money = init_amount * ratio * (1+fee)
         if current_amount >= money:
             return math.floor(money / price)
-        else:
+        elif current_amount >= 0:
             return math.floor(current_amount / price)
+        else:
+            return 0
 
     def _max_units_could_sell(self, ratio, init_amount, current_units, price, fee):
         money = init_amount * ratio * (1-fee)
