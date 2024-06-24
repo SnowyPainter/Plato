@@ -40,11 +40,11 @@ class SalmonInvest:
         raw_data.drop(columns=[col for col in raw_data.columns if col.endswith('_Volume')], inplace=True)
         return raw_data
     
-    def __init__(self, yfsymbols, MABT_W, SP_W, Trend_B, day_before=30, exchange='krx'):
+    def __init__(self, yfsymbols, MABT_W, SP_W, Trend_B, current_amount, day_before=30,exchange='krx'):
         if exchange == 'nyse':
             self.client = nasdaq.NasdaqClient(symbols[0])
         elif exchange == 'krx':
-            self.client = kis.KISClient(symbols[0])
+            self.client = kis.KISClient(symbols[0], current_amount)
         
         self.MABT = MABreakThrough()
         self.SP = StockPair()

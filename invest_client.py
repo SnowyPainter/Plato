@@ -70,10 +70,11 @@ weights = []
 for info in strategy_needs[strategy]:
     weights.append(float(input(f"{info} : ")))
 invester = None
+ca = float(input("주문 가능 금액 : "))
 if strategy == "1":
-    invester = Salmon_invest.SalmonInvest(portfolios[portfolio]['portfolio'], weights[0], weights[1], weights[2], exchange=portfolios[portfolio]['exchange'])
+    invester = Salmon_invest.SalmonInvest(portfolios[portfolio]['portfolio'], weights[0], weights[1], weights[2], ca, exchange=portfolios[portfolio]['exchange'])
 elif strategy == "2":
-    invester = Swinger_invest.SwingerInvest(portfolios[portfolio]['portfolio'], weights[1], weights[0], exchange=portfolios[portfolio]['exchange'])
+    invester = Swinger_invest.SwingerInvest(portfolios[portfolio]['portfolio'], weights[1], weights[0], ca, exchange=portfolios[portfolio]['exchange'])
 
 if invester == None:
     print("유효한 전략을 선택하세요.")

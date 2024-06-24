@@ -70,7 +70,7 @@ def normalize(df):
 def series_winsorize(series, limits=(0.05, 0.05)):
     return winsorize(series, limits=limits)
 
-def calculate_rsi(df, column, period=14):
+def calculate_rsi(df, column, period=84):
     delta = df[column].diff(1)
     gain = delta.where(delta > 0, 0)
     loss = -delta.where(delta < 0, 0)
@@ -87,7 +87,7 @@ def df_lags(df, column, lag):
     return df[column].shift(lag)
 
 def df_MACD(df, column):
-    return df[column].ewm(span=14, adjust=False).mean() - df[column].ewm(span=26, adjust=False).mean()
+    return df[column].ewm(span=80, adjust=False).mean() - df[column].ewm(span=150, adjust=False).mean()
 
 def determine_trend(df, column):
     # 1 up, 0 down

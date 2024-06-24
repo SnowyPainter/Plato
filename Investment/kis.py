@@ -55,7 +55,7 @@ class KISClient:
         else:
             return current_units
 
-    def __init__(self, name):
+    def __init__(self, name, current_amount):
         self.logger = logger.Logger(name)
         if not os.path.exists('./settings'):
             os.makedirs('./settings')
@@ -67,6 +67,7 @@ class KISClient:
         
         self.broker = mojito.KoreaInvestment(api_key=self.keys["APIKEY"], api_secret=self.keys["APISECRET"], acc_no=self.keys["ACCNO"], mock=False)
         self.init_amount, self.current_amount, self.stocks_qty, self.stocks_avg_price = self._get_balance()
+        self.current_amount = current_amount
         self.logger.log(f"Loading balance ...")
         self.logger.log(f"Initial Amount : {self.init_amount}")
         self.logger.log(f"Current Amount : {self.current_amount}")
@@ -80,7 +81,6 @@ class KISClient:
     def get_price(self, symbol):
         time.sleep(0.1)
         resp = self.broker.fetch_price(symbol)
-        print(symbol, resp)
         if not 'output' in resp:
             return self.get_price(symbol)
         return float(resp['output']['stck_prpr'])

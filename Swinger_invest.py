@@ -29,11 +29,11 @@ class SwingerInvest:
         raw_data.drop(columns=[col for col in raw_data.columns if col.endswith('_Volume')], inplace=True)
         return raw_data
 
-    def __init__(self, symbols, SP_weight, Band_weight, exchange='krx'):
+    def __init__(self, symbols, SP_weight, Band_weight, current_amount, exchange='krx'):
         if exchange == 'nyse':
             self.client = nasdaq.NasdaqClient(symbols[0])
         elif exchange == 'krx':
-            self.client = kis.KISClient(symbols[0])
+            self.client = kis.KISClient(symbols[0], current_amount)
         
         self.symbols = symbols
         self.BSR = BollingerSplitReversal()
@@ -67,14 +67,14 @@ class SwingerInvest:
             bands[symbol]['ub'] = ub.iloc[-1]
             bands[symbol]['lb'] = lb.iloc[-1]
             bands[symbol]['mid'] = mid.iloc[-1]
-        
+        print(bands)
         trade_strengths = self.BSR.action(self.symbols, self.current_data, bands)
         for symbol, strength in trade_strengths.items():
             if strength > 0:
                 trade_dict[symbol] += self.BW
             elif strength < 0:
                 trade_dict[symbol] -= self.BW
-    
+
         for stock, score in trade_dict.items():
             alpha_ratio = abs(0.1 * score)
             if score > 0:
