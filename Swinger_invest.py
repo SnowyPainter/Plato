@@ -29,7 +29,7 @@ class SwingerInvest:
         raw_data.drop(columns=[col for col in raw_data.columns if col.endswith('_Volume')], inplace=True)
         return raw_data
 
-    def __init__(self, symbols, SP_weight, Band_weight, current_amount, exchange='krx'):
+    def __init__(self, symbols, Pair_weight, Band_weight, current_amount, exchange='krx'):
         if exchange == 'nyse':
             self.client = nasdaq.NasdaqClient(symbols[0])
         elif exchange == 'krx':
@@ -38,7 +38,7 @@ class SwingerInvest:
         self.symbols = symbols
         self.BSR = BollingerSplitReversal()
         self.SP = StockPair()
-        self.SPW = SP_weight
+        self.SPW = Pair_weight
         self.BW = Band_weight
     
         start, end, interval = utils.today_before(30), utils.today(), '1h'
@@ -60,6 +60,7 @@ class SwingerInvest:
                 trade_dict[stock] += self.SPW
             for stock in sell_list:
                 trade_dict[stock] -= self.SPW
+        
         bands = {}
         for symbol in self.symbols:
             ub, lb, mid = self.BSR.get_bollinger_band(self.raw_data, symbol+"_Price")
@@ -67,22 +68,25 @@ class SwingerInvest:
             bands[symbol]['ub'] = ub.iloc[-1]
             bands[symbol]['lb'] = lb.iloc[-1]
             bands[symbol]['mid'] = mid.iloc[-1]
-        print(bands)
         trade_strengths = self.BSR.action(self.symbols, self.current_data, bands)
         for symbol, strength in trade_strengths.items():
             if strength > 0:
                 trade_dict[symbol] += self.BW
             elif strength < 0:
                 trade_dict[symbol] -= self.BW
-
-        for stock, score in trade_dict.items():
-            alpha_ratio = abs(0.1 * score)
-            if score > 0:
-                print(f"buy {stock} {alpha_ratio}")
-                self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
-            elif score < 0:
-                print(f"sell {stock} {alpha_ratio}")
-                self.client.sell(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
+        
+        print(trade_dict)
+        alphas = {key:0.1 * value for key, value in trade_dict.items()}
+        action_dicts = [utils.process_weights({k: v for k, v in alphas.items() if v > 0}), {k: v for k, v in alphas.items() if v < 0}]
+        for stock, alpha in action_dicts[1].items(): # sell
+            alpha_ratio = abs(alpha)
+            print(f"sell {stock} {alpha_ratio}")
+            self.client.sell(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
+        for stock, alpha in action_dicts[0].items(): # buy
+            alpha_ratio = abs(alpha)
+            print(f"buy {stock} {alpha_ratio}")
+            self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
+        
         
     def backtest(self):
         bt = backtester.Backtester(self.symbols, '2023-01-01', '2024-01-01', '1h', 10000000, 0.0025, self._process_data)
@@ -120,12 +124,15 @@ class SwingerInvest:
                 for stock in sell_list:
                     weights[stock] -= self.SPW
             
-            for stock, score in weights.items():
-                alpha_ratio = abs(0.1 * score)
-                if score > 0:
-                    bt.buy(stock, alpha_ratio)
-                elif score < 0:
-                    bt.sell(stock, alpha_ratio)
+            
+            alphas = {key:0.1 * value for key, value in weights.items()}
+            action_dicts = [utils.process_weights({k: v for k, v in alphas.items() if v > 0}), {k: v for k, v in alphas.items() if v < 0}]
+            for stock, alpha in action_dicts[1].items(): # sell
+                alpha_ratio = abs(alpha)
+                bt.sell(stock, alpha_ratio)
+            for stock, alpha in action_dicts[0].items(): # buy
+                alpha_ratio = abs(alpha)
+                bt.buy(stock, alpha_ratio)
             
             bar += 1
         bt.print_result()

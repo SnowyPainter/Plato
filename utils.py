@@ -108,3 +108,13 @@ def determine_trend(df, column):
             trend.append(-1)
     trend.insert(0, 0)
     return trend
+
+def process_weights(buy_weights):
+    cut_dict={key:min(value, 1) for key,value in buy_weights.items()}
+    total = sum(cut_dict.values())
+    for key, weight in cut_dict.items():
+        if total > weight:
+            buy_weights[key] = weight / total
+        else:
+            buy_weights[key] = weight
+    return buy_weights

@@ -1,6 +1,7 @@
 import Salmon_invest
 import Swinger_invest
 import utils
+import connect_tester
 
 import os
 from rich.console import Console
@@ -9,6 +10,8 @@ from rich.columns import Columns
 import time
 import schedule
 from datetime import datetime
+
+connect_tester.check_connection()
 
 console = Console()
 
@@ -32,7 +35,7 @@ portfolios = {
     },
     "2" : {
         "name" : "HBM 기술주2",
-        "portfolio" : ["042700.KS", "000660.KS", "012450.KS"],
+        "portfolio" : ["005930.KS", "000660.KS", "012450.KS"],
         "exchange" : 'krx'
     },
     "3" : {
