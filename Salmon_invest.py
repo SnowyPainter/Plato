@@ -42,9 +42,9 @@ class SalmonInvest:
     
     def __init__(self, yfsymbols, MABT_W, SP_W, Trend_B, current_amount, day_before=30,exchange='krx'):
         if exchange == 'nyse':
-            self.client = nasdaq.NasdaqClient(symbols[0])
+            self.client = nasdaq.NasdaqClient(yfsymbols[0])
         elif exchange == 'krx':
-            self.client = kis.KISClient(symbols[0], current_amount)
+            self.client = kis.KISClient(yfsymbols[0], current_amount)
         
         self.MABT = MABreakThrough()
         self.SP = StockPair()
