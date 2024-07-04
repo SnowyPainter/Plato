@@ -1,6 +1,6 @@
 class BollingerSplitReversal:
     def __init__(self):
-        self.minimal_window = 60
+        self.minimal_window = 30
     
     def _close_to_mid(self, mid, price):
         return abs(mid - price) < (price / 1000)
