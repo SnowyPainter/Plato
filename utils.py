@@ -118,3 +118,7 @@ def process_weights(buy_weights):
         else:
             buy_weights[key] = weight
     return buy_weights
+
+def calculate_sale_percentage(current_percentage, target_percentage):
+    sale_percentage = current_percentage - target_percentage
+    return sale_percentage

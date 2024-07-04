@@ -1,5 +1,6 @@
 import Salmon_invest
 import Swinger_invest
+import Fraction_invest
 import utils
 import connect_tester
 
@@ -42,6 +43,14 @@ portfolios = {
         "name" : "방산",
         "portfolio" : ["012450.KS", "064350.KS"],
         "exchange" : 'krx'
+    },
+    "4" : {
+        "name" : "분산투자 1 (Fraction만 선택)",
+        "portfolio" : {
+            "long" : ["005930.KS", "005380.KS"],
+            "pairs" : [("000660.KS", "042700.KS"), ("012450.KS", "064350.KS")]
+        },
+        "exchange" : "krx"
     }
 }
 
@@ -51,8 +60,7 @@ for no, body in portfolios.items():
     portfolio_table.add_row(no+" "+body['name'], *body['portfolio'])
 
 strategy_table = Table("전략 선택")
-file_list = os.listdir('.')
-strategy_names = [file[:-10] for file in file_list if file.endswith('_invest.py')]
+strategy_names = ["Salmon", "Swinger", "Fraction"]
 for i in range(1, len(strategy_names) + 1):
     strategy_table.add_row(str(i)+"번", strategy_names[i-1])
 
@@ -63,7 +71,8 @@ console.print(tables2)
 
 strategy_needs = {
     "1" : ["이동 평균 돌파 전략 가중치", "쌍 매매 가중치", "추세 편향"],
-    "2" : ["볼린저 밴드 역방향 가중치", "쌍 매매 가중치"]
+    "2" : ["볼린저 밴드 역방향 가중치", "쌍 매매 가중치"],
+    "3" : ["쌍 매매 가중치", "볼린저 밴드 역방향 가중치", "이동 평균 돌파 가중치"]
 }
 
 portfolio = input("포트폴리오를 선택해주세요 (번호) : ")
@@ -78,6 +87,8 @@ if strategy == "1":
     invester = Salmon_invest.SalmonInvest(portfolios[portfolio]['portfolio'], weights[0], weights[1], weights[2], ca, exchange=portfolios[portfolio]['exchange'])
 elif strategy == "2":
     invester = Swinger_invest.SwingerInvest(portfolios[portfolio]['portfolio'], weights[1], weights[0], ca, exchange=portfolios[portfolio]['exchange'])
+elif strategy == "3":
+    invester = Fraction_invest.FractionInvest(portfolios[portfolio]['portfolio'], weights[0], weights[1], weights[2], ca)
 
 if invester == None:
     print("유효한 전략을 선택하세요.")

@@ -25,7 +25,7 @@ class Backtester:
             return units
         else:
             return current_units
-            
+    
     def __init__(self, symbols, start, end, interval, initial_amount, fee, data_proc_func):
         self.init_amount = initial_amount
         self.evaluated_amount = initial_amount
@@ -56,6 +56,25 @@ class Backtester:
             self.units[symbol] = 0    
         self.bar = 0
         self.trade_count = 0
+    
+    def print_stock_weights(self):
+        total_units = sum(self.units.values())
+        for stock, unit in self.units.items():
+            if total_units > 0:
+                weight = unit / total_units * 100
+            else:
+                weight = 0
+            print(f"{stock}: {weight:.2f}% |", end='')
+        print('')
+    
+    def weight_of_stock(self, stock):
+        total_units = sum(self.units.values())
+        return self.units[stock] / total_units
+    
+    def profit_of_stock(self, stock):
+        if self.entry_price[stock] == 0:
+            return 0
+        return (self.price[stock] - self.entry_price[stock]) / self.entry_price[stock]
     
     def print_result(self, fname=''):
         self.portfolio_returns = np.array(self.portfolio_returns)

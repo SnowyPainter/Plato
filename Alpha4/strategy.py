@@ -2,8 +2,6 @@ class BollingerSplitReversal:
     def __init__(self):
         self.minimal_window = 30
     
-    def _close_to_mid(self, mid, price):
-        return abs(mid - price) < (price / 1000)
     def get_bollinger_band(self, df, column):
         num_std = 2
         ma = df[column].rolling(window=self.minimal_window).mean()
@@ -23,8 +21,6 @@ class BollingerSplitReversal:
                 trade_strength[symbol] = ub - price
             elif price <= lb:
                 trade_strength[symbol] = lb - price
-            elif self._close_to_mid(bands[symbol]['mid'], price):
-                trade_strength[symbol] = price / 1000
         return trade_strength
                 
         
