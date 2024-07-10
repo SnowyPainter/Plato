@@ -53,11 +53,19 @@ portfolios = {
         "exchange" : "krx"
     },
     "5" : {
-        "name" : "분산투자 2 (Faction)",
+        "name" : "분산투자 2 (Fraction)",
         "portfolio" : {
                 "long" : ["012450.KS"],
                 "pairs" : [("000660.KS", "042700.KS"), ("005380.KS", "012330.KS")]
             },
+        "exchange" : "krx"
+    },
+    "6" : {
+        "name" : "분산투자 3 (Fraction)",
+        "portfolio" : {
+            "long" : ["005380.KS"],
+            "pairs" : [("000660.KS", "005930.KS")]
+        },
         "exchange" : "krx"
     }
 }

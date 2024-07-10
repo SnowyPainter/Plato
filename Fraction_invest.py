@@ -38,7 +38,7 @@ class FractionInvest:
 
         self.pairs = symbols["pairs"]
         self.long = symbols["long"]
-        self.symbols = self.long + [element for tup in self.pairs for element in tup]
+        self.symbols = sorted(set(self.long + [element for tup in self.pairs for element in tup]))
         self.client = kis.KISClient(self.symbols[0], current_amount)
         
         self.MABT = MABreakThrough()
@@ -111,7 +111,7 @@ class FractionInvest:
             self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
         
     def backtest(self, interval='1h'):
-        bt = backtester.Backtester(self.symbols, '2023-01-01', '2024-01-01', interval, 10000000, 0.0025, self._process_data)
+        bt = backtester.Backtester(self.symbols, '2024-01-01', '2024-07-01', interval, 10000000, 0.0025, self._process_data)
         bar = 0
         
         ban_trade = {}
