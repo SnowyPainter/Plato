@@ -96,6 +96,14 @@ class Backtester:
 
         if fname == '':
             print(text)
+        elif fname == 'return':
+            return {
+                'sharp' : sharp_ratio,
+                'end' : end_return,
+                'worst' : worst_return,
+                'best' : best_return,
+                'trades' : self.trade_count
+            }
         else:
             with open(fname, 'w') as f:
                 f.write(text)

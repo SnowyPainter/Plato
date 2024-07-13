@@ -54,8 +54,8 @@ class NeoInvest:
         for s in sell_list:
             self.client.sell(s, self.current_data["price"][s+"_Price"], alpha_ratio)
         
-    def backtest(self, interval='1h'):
-        bt = backtester.Backtester(self.symbols, '2023-01-01', '2024-01-01', interval, 10000000, 0.0025, self._process_data)
+    def backtest(self, start='2023-01-01', end='2024-01-01', interval='1h', print_result=True):
+        bt = backtester.Backtester(self.symbols, start, end, interval, 10000000, 0.0025, self._process_data)
         bar = 0
         window = 62
 
@@ -76,5 +76,10 @@ class NeoInvest:
                     bt.sell(s, alpha_ratio)    
             bt.print_stock_weights()
             bar += 1
-        bt.print_result()
-        bt.plot_result()
+        
+        if print_result:
+            bt.print_result()
+            bt.plot_result() 
+        else:   
+            return bt.print_result(fname='return')
+        

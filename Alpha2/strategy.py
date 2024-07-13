@@ -15,7 +15,7 @@ class ThemeCapture:
         the_stocks = {}
         for key, value in utils.THEMES.items():
             stocks = list(utils.get_theme_stocks(value).keys())
-            df, symbols = utils.load_historical_datas(stocks, start, end)
+            df, symbols = utils.load_historical_datas(stocks, start, end, '1h')
             for column in list(map(lambda symbol: symbol+"_Price", symbols)):
                 df[column+"_LR"] = np.log(df[column] / df[column].shift(1))
             dfs[key] = df
