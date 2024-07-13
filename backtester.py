@@ -8,10 +8,6 @@ import matplotlib.pyplot as plt
 import mplcursors
 
 class Backtester:
-    def _normalize_raw_data(self):
-        mean, std = self.raw_data.mean(), self.raw_data.std()
-        return (self.raw_data - mean) / std
-    
     def _max_units_could_affordable(self, ratio, init_amount, current_amount, price, fee):
         money = init_amount * ratio * (1+fee)
         if current_amount >= money:
@@ -106,7 +102,7 @@ class Backtester:
 
     def plot_result(self):
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10))
-        norm_raw = self._normalize_raw_data()
+        norm_raw = utils.normalize(self.raw_data)
          
         for symbol in self.symbols:
             ax1.plot(self.raw_data.index, norm_raw[symbol+"_Price"], label=symbol)
@@ -170,7 +166,7 @@ class Backtester:
         self.portfolio_evaluates.append(self.evaluated_amount)
         self.portfolio_returns.append((self.evaluated_amount - self.init_amount) / self.init_amount)
         self.bar += 1
-        return self.raw_data, self.data_proc_func(self.raw_data, self._normalize_raw_data(), self.bar - 1), self.raw_data.index[self.bar - 1]
+        return self.raw_data, self.data_proc_func(self.raw_data, utils.normalize(self.raw_data), self.bar - 1), self.raw_data.index[self.bar - 1]
     
     def buy(self, symbol, ratio=0.1):
         units = self._max_units_could_affordable(ratio, self.init_amount, self.current_amount, self.price[symbol], self.fee)

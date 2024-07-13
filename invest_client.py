@@ -1,6 +1,7 @@
 import Salmon_invest
 import Swinger_invest
 import Fraction_invest
+import Neo_invest
 import utils
 import connect_tester
 
@@ -67,6 +68,11 @@ portfolios = {
             "pairs" : [("000660.KS", "005930.KS")]
         },
         "exchange" : "krx"
+    },
+    "7" : {
+        "name" : "OU 전략 페어트레이딩 - 한화에어로/하닉",
+        "portfolio" : ["000660.KS", "012450.KS"],
+        "exchange" : "krx"
     }
 }
 
@@ -76,7 +82,7 @@ for no, body in portfolios.items():
     portfolio_table.add_row(no+" "+body['name'], *body['portfolio'])
 
 strategy_table = Table("전략 선택")
-strategy_names = ["Salmon", "Swinger", "Fraction"]
+strategy_names = ["Salmon", "Swinger", "Fraction", "Neo"]
 for i in range(1, len(strategy_names) + 1):
     strategy_table.add_row(str(i)+"번", strategy_names[i-1])
 
@@ -88,7 +94,8 @@ console.print(tables2)
 strategy_needs = {
     "1" : ["이동 평균 돌파 전략 가중치", "쌍 매매 가중치", "추세 편향"],
     "2" : ["볼린저 밴드 역방향 가중치", "쌍 매매 가중치"],
-    "3" : ["쌍 매매 가중치", "볼린저 밴드 역방향 가중치", "이동 평균 돌파 가중치"]
+    "3" : ["쌍 매매 가중치", "볼린저 밴드 역방향 가중치", "이동 평균 돌파 가중치"],
+    "4" : [],
 }
 
 portfolio = input("포트폴리오를 선택해주세요 (번호) : ")
@@ -105,6 +112,8 @@ elif strategy == "2":
     invester = Swinger_invest.SwingerInvest(portfolios[portfolio]['portfolio'], weights[1], weights[0], ca, exchange=portfolios[portfolio]['exchange'])
 elif strategy == "3":
     invester = Fraction_invest.FractionInvest(portfolios[portfolio]['portfolio'], weights[0], weights[1], weights[2], ca)
+elif strategy == "4":
+    invester = Neo_invest.NeoInvest(portfolios[portfolio]['portfolio'][0], portfolios[portfolio]['portfolio'][1], ca)
 
 if invester == None:
     print("유효한 전략을 선택하세요.")
