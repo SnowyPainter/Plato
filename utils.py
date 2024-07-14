@@ -121,3 +121,6 @@ def process_weights(buy_weights):
 def calculate_sale_percentage(current_percentage, target_percentage):
     sale_percentage = current_percentage - target_percentage
     return sale_percentage
+
+def get_pct_changes(returns):
+    return pd.Series(returns).pct_change().dropna()

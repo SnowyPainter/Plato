@@ -68,11 +68,6 @@ portfolios = {
             "pairs" : [("000660.KS", "005930.KS")]
         },
         "exchange" : "krx"
-    },
-    "7" : {
-        "name" : "OU 전략 페어트레이딩 - 한화에어로/하닉",
-        "portfolio" : ["000660.KS", "012450.KS"],
-        "exchange" : "krx"
     }
 }
 
@@ -82,7 +77,7 @@ for no, body in portfolios.items():
     portfolio_table.add_row(no+" "+body['name'], *body['portfolio'])
 
 strategy_table = Table("전략 선택")
-strategy_names = ["Salmon", "Swinger", "Fraction", "Neo"]
+strategy_names = ["Salmon", "Swinger", "Fraction"]
 for i in range(1, len(strategy_names) + 1):
     strategy_table.add_row(str(i)+"번", strategy_names[i-1])
 
