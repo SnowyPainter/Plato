@@ -4,3 +4,4 @@ log/
 *.dat
 settings/*.csv
 test.py
+*.txt

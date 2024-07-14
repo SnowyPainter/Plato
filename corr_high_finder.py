@@ -3,6 +3,8 @@ from datetime import datetime, timedelta
 import calendar
 import Neo_invest
 
+import json
+
 def get_high_corr_pairs(start, end):
     pairs = []
     for key, value in utils.THEMES.items():
@@ -46,7 +48,19 @@ def get_high_backtest_result(pairs, start, end):
     print(results[worst_min_key])
     print("Max End : ", end_max_key)
     print(results[end_max_key])
-
+    
+    text = f"Best Sharp : {sharp_max_key} \n"
+    text += json.dumps(results[sharp_max_key], sort_keys=True, indent=4) + "\n"
+    text += f"Best Return : {best_max_key} \n"
+    text += json.dumps(results[best_max_key], sort_keys=True, indent=4) + "\n"
+    text += f"Best End Return : {end_max_key} \n"
+    text += json.dumps(results[end_max_key], sort_keys=True, indent=4) + "\n"
+    text += f"Worst Return : {worst_min_key} \n"
+    text += json.dumps(results[worst_min_key], sort_keys=True, indent=4) + "\n"
+    
+    with open("recommend stocks.txt", 'w') as f:
+        f.write(text)
+    
 def find_stocks_to_invest():
     today = datetime.today()
     end = today.strftime('%Y-%m-%d')
