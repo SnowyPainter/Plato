@@ -50,8 +50,10 @@ class NeoInvest:
         
         buy_list, sell_list, alpha_ratio = self.OU.get_signal(self.symbols[0], self.symbols[1], price1, price2)
         for b in buy_list:
+            print("Buy ", b)
             self.client.buy(b, self.current_data["price"][b+"_Price"], alpha_ratio)
         for s in sell_list:
+            print("Sell ", s)
             self.client.sell(s, self.current_data["price"][s+"_Price"], alpha_ratio)
         
     def backtest(self, start='2023-01-01', end='2024-01-01', interval='1h', print_result=True):
