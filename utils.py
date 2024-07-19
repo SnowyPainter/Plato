@@ -82,6 +82,13 @@ def calculate_rsi(df, column, period=84):
     rsi = 100 - (100 / (1 + rs))
     return rsi
 
+def trim_units_minmax(units):
+    if units > 1:
+        units = 1
+    elif units < -1:
+        units = -1
+    return units
+
 def df_lags(df, column, lag):
     return df[column].shift(lag)
 

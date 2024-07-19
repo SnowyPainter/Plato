@@ -7,6 +7,7 @@ import corr_high_finder
 import utils
 import connect_tester
 
+connect_tester.check_connection()
 
 
 def get_symbols(option):

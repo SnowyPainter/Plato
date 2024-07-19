@@ -1,3 +1,4 @@
+from Alpha1.strategy import *
 from Alpha5.strategy import *
 
 from Models import model
@@ -7,14 +8,20 @@ from Investment import kis
 
 from datetime import datetime
 import itertools
+import math
 import pandas as pd
 
 class NeoInvest:
     def _process_data(self, raw, norm_raw, bar):
         price_columns = list(map(lambda symbol: symbol+"_Price", self.symbols))
+        LMA = norm_raw[price_columns].rolling(50).mean().iloc[bar]
+        SMA = norm_raw[price_columns].rolling(14).mean().iloc[bar]
         return {
             "norm_price_series" : norm_raw[price_columns],
-            "price" : raw[price_columns].iloc[bar]
+            "norm_price" : norm_raw[price_columns].iloc[bar],
+            "price" : raw[price_columns].iloc[bar],
+            "LMA" : LMA,
+            "SMA" : SMA
         }
     def _get_current_prices(self, symbols):
         df = {}
@@ -34,6 +41,7 @@ class NeoInvest:
         self.client = kis.KISClient(self.symbols[0], current_amount)
         
         self.OU = OU()
+        self.MABT = MABreakThrough()
         start, end, interval = utils.today_before(50), utils.today(), '1h'
         self.raw_data = self._create_init_data(self.symbols, start, end, interval)
         
@@ -48,34 +56,70 @@ class NeoInvest:
         price1 = norm_raw[self.symbols[0]+"_Price"].tail(window)
         price2 = norm_raw[self.symbols[1]+"_Price"].tail(window)
         
+        trade_dict = {}
+        for symbol in self.symbols:
+            trade_dict[symbol] = 0
+            
+        buy_list, sell_list = self.MABT.action(self.symbols, self._process_data(self.raw_data, norm_raw, -1))
+        for stock in buy_list:
+            trade_dict[stock] += 0.2
+        for stock in sell_list:
+            trade_dict[stock] -= 0.2
+        
         buy_list, sell_list, alpha_ratio = self.OU.get_signal(self.symbols[0], self.symbols[1], price1, price2)
         for b in buy_list:
-            print("Buy ", b)
-            self.client.buy(b, self.current_data["price"][b+"_Price"], alpha_ratio)
+            trade_dict[stock] += alpha_ratio
         for s in sell_list:
-            print("Sell ", s)
-            self.client.sell(s, self.current_data["price"][s+"_Price"], alpha_ratio)
+            trade_dict[stock] -= alpha_ratio
+        
+        action_dicts = [utils.process_weights({k: v for k, v in trade_dict.items() if v > 0}), {k: v for k, v in trade_dict.items() if v < 0}]
+        for stock, alpha in action_dicts[1].items(): # sell
+            alpha_ratio = abs(alpha)
+            print("Sell ", stock, alpha_ratio)
+            self.client.sell(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
+        for stock, alpha in action_dicts[0].items(): # buy
+            alpha_ratio = abs(alpha)
+            print("Buy ", stock, alpha_ratio)
+            self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
         
     def backtest(self, start='2023-01-01', end='2024-01-01', interval='1h', print_result=True):
         bt = backtester.Backtester(self.symbols, start, end, interval, 10000000, 0.0025, self._process_data)
         bar = 0
         window = 62
-
         while True:
             raw, data, today = bt.go_next()
             if data == -1:
                 break
+            
+            trade_dict = {}
+            for symbol in self.symbols:
+                trade_dict[symbol] = 0
+            
+            buy_list, sell_list = self.MABT.action(self.symbols, data)
+            for stock in buy_list:
+                trade_dict[stock] += 0.2
+            for stock in sell_list:
+                trade_dict[stock] -= 0.2
             
             if bar != 0 and bar >= window:
                 price1, price2 = data["norm_price_series"][self.symbols[0]+"_Price"], data["norm_price_series"][self.symbols[1]+"_Price"]
                 price1 = price1[bar - window:bar]
                 price2 = price2[bar - window:bar]
                 buy_list, sell_list, alpha_ratio = self.OU.get_signal(self.symbols[0], self.symbols[1], price1, price2)
-
                 for b in buy_list:
-                    bt.buy(b, alpha_ratio)
+                    trade_dict[b] += alpha_ratio
                 for s in sell_list:
-                    bt.sell(s, alpha_ratio)    
+                    trade_dict[s] -= alpha_ratio
+            
+            action_dicts = [utils.process_weights({k: v for k, v in trade_dict.items() if v > 0}), {k: v for k, v in trade_dict.items() if v < 0}]
+            print(action_dicts)
+            for stock, alpha in action_dicts[1].items(): # sell
+                alpha_ratio = abs(alpha)
+                bt.sell(stock, alpha_ratio)
+            for stock, alpha in action_dicts[0].items(): # buy
+                alpha_ratio = abs(alpha)
+                bt.buy(stock, alpha_ratio)
+
             bt.print_stock_weights()
             bar += 1
         
