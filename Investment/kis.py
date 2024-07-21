@@ -83,7 +83,7 @@ class KISClient:
         resp = self.broker.fetch_price(symbol)
         if not 'output' in resp:
             return self.get_price(symbol)
-        return float(resp['output']['stck_prpr'])
+        return float(resp['output']['stck_prpr']), float(resp['output']['stck_hgpr']), float(resp['output']['stck_lwpr'])
     
     def calculate_evaluated(self):
         evaluate_stocks = 0

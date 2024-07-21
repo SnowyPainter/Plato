@@ -46,9 +46,9 @@ def get_all_stock_datas_in_theme():
 
 def load_historical_data(symbol, start, end, interval='1d'):
     d = yf.download(symbol, start=start, end=end, interval=interval)
-    d.rename(columns={'Open': symbol+'_Price', 'Volume' : symbol+"_Volume"}, inplace=True)
+    d.rename(columns={'Open': symbol+'_Price', 'Volume' : symbol+"_Volume", 'High' : symbol+"_High", 'Low' : symbol+"_Low"}, inplace=True)
     d.index = pd.to_datetime(d.index, format="%Y-%m-%d %H:%M:%S%z")
-    return d[[symbol+'_Price', symbol+"_Volume"]]
+    return d[[symbol+'_Price', symbol+"_Volume", symbol+"_High", symbol+"_Low"]]
 
 def load_historical_datas(symbols, start, end, interval='1d'):
     dfs = []
@@ -92,28 +92,21 @@ def trim_units_minmax(units):
 def df_lags(df, column, lag):
     return df[column].shift(lag)
 
-def df_MACD(df, column):
-    return df[column].ewm(span=80, adjust=False).mean() - df[column].ewm(span=150, adjust=False).mean()
+def df_MACD(df, column, span1 = 30, span2 = 55):
+    return df[column].ewm(span=span1, adjust=False).mean() - df[column].ewm(span=span2, adjust=False).mean()
 
-def determine_trend(df, column):
-    # 1 up, 0 down
-    trend = []
-    for i in range(1, len(df)):
-        price = df[column].iloc[i]
-        price_lag = df[column].iloc[i-1]
-        diff = price - price_lag
-        if diff > 0.2:
-            trend.append(3)
-        elif diff > 0:
-            trend.append(2)
-        elif diff > -0.15:
-            trend.append(1)
-        elif diff > -0.2:
-            trend.append(0)
-        else:
-            trend.append(-1)
-    trend.insert(0, 0)
-    return trend
+def df_ADX(df, column, period = 30):
+    df[column+'_TR'] = np.maximum(df[column+"_High"] - df[column+"_Low"], np.maximum(abs(df[column+"_High"] - df[column+"_Price"].shift(1)), abs(df[column+"_Low"] - df[column+"_Price"].shift(1))))
+    df[column+'_+DM'] = np.where((df[column+"_High"] - df[column+"_High"].shift(1)) > (df[column+'_Low'].shift(1) - df[column+"_Low"]), 
+                        np.maximum(df[column+"_High"] - df[column+"_High"].shift(1), 0), 0)
+    df[column+'_-DM'] = np.where((df[column+'_Low'].shift(1) - df[column+'_Low']) > (df[column+"_High"] - df[column+"_High"].shift(1)), 
+                        np.maximum(df[column+'_Low'].shift(1) - df[column+'_Low'], 0), 0)
+    df[column+'_ATR'] = df[column+'_TR'].rolling(window=period).mean()
+    df[column+'_+DI'] = 100 * (df[column+'_+DM'].rolling(window=period).mean() / df[column+'_ATR'])
+    df[column+'_-DI'] = 100 * (df[column+'_-DM'].rolling(window=period).mean() / df[column+'_ATR'])
+    df[column+'_DX'] = 100 * abs(df[column+'_+DI'] - df[column+'_-DI']) / (df[column+'_+DI'] + df[column+'_-DI'])
+    return df[column+'_DX'].rolling(window=period).mean()
+
 
 def process_weights(buy_weights):
     cut_dict={key:min(value, 1) for key,value in buy_weights.items()}

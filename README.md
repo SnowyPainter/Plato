@@ -1,15 +1,13 @@
 # Plato
 
-## Fraction 알고리즘
+# Model
 
-### 매매 알고리즘
-1. 볼린저 밴드에 하단 진입시 매수, 중간 진입시 분할 매도, 상단 진입시 전량 매도
-2. MA 돌파시 매수, MA 하향 돌파시 매도
-3. 주식은 튜플로 입력받아 쌍 매매
+## Trend Predictor
 
-* 분산 투자에 적합함
-* 기간 : 2023-01-01부터 2024-01-01
-* 종목 : 현대차, 삼성전자, Sk하이닉스, 한미반도체, 현대로템, 한화에어로스페이스
-* 1시간 간격 조정 : 샤프지수 1.30, 최종 수익률 244.30%, 거래 횟수 731여회
-* 1일 간격 조정 : 샤프지수 2.59, 최종 수익률 56.52%, 거래 횟수 211여회
-> 볼린저 밴드 가중치를 3 이하로 주는 것이 좋음
+Trend predictor, requires RSI, ADX, Lag(1), MACD to predict trend during 1 hour. At least predicts 58% trends and At the best, almost 98%.
+
+Using trend predictor, Max return 19% -> 25%, Lowest return -9% -> 0%. Also Sharp ratio could be higher.
+
+It is stronger than SMA breaking through strategy.
+
+So far, the predict accuracy over than 55%, it is better than without it.

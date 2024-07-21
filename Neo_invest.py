@@ -27,7 +27,10 @@ class NeoInvest:
         df = {}
         for symbol in symbols:
             code = symbol.split('.')[0]
-            df[symbol+"_Price"] = self.client.get_price(code)
+            pr,hpr,lpr = self.client.get_price(code)
+            df[symbol+"_Price"] = pr
+            df[symbol+"_High"] = hpr
+            df[symbol+"_Low"] = lpr
         df = pd.DataFrame(df, index=[datetime.now()])
         return df
     def _create_init_data(self, symbols, start, end, interval):
@@ -43,6 +46,7 @@ class NeoInvest:
         self.OU = OU()
         self.MABT = MABreakThrough()
         start, end, interval = utils.today_before(50), utils.today(), '1h'
+        self.trend_predictors = model.create_trend_predictors(self.symbols, start, end, interval)
         self.raw_data = self._create_init_data(self.symbols, start, end, interval)
         
     def append_current_data(self):
@@ -56,28 +60,39 @@ class NeoInvest:
         price1 = norm_raw[self.symbols[0]+"_Price"].tail(window)
         price2 = norm_raw[self.symbols[1]+"_Price"].tail(window)
         
+        not_trade = []
         trade_dict = {}
         for symbol in self.symbols:
             trade_dict[symbol] = 0
+        
+        for symbol in self.symbols:
+            if not (symbol in self.trend_predictors):
+                continue
             
-        buy_list, sell_list = self.MABT.action(self.symbols, self._process_data(self.raw_data, norm_raw, -1))
-        for stock in buy_list:
-            trade_dict[stock] += 0.2
-        for stock in sell_list:
-            trade_dict[stock] -= 0.2
+            trend = self.trend_predictors[symbol].predict(self.raw_data.tail(self.trend_predictors[symbol].minimal_data_length), symbol)
+            if trend == 2:
+                trade_dict[symbol] += 0.3
+            elif trend == 0:
+                trade_dict[symbol] -= 0.8
+            else:
+                not_trade.append(symbol)
         
         buy_list, sell_list, alpha_ratio = self.OU.get_signal(self.symbols[0], self.symbols[1], price1, price2)
         for b in buy_list:
-            trade_dict[stock] += alpha_ratio
+            trade_dict[b] += alpha_ratio
         for s in sell_list:
-            trade_dict[stock] -= alpha_ratio
+            trade_dict[s] -= alpha_ratio
         
         action_dicts = [utils.process_weights({k: v for k, v in trade_dict.items() if v > 0}), {k: v for k, v in trade_dict.items() if v < 0}]
         for stock, alpha in action_dicts[1].items(): # sell
+            if stock in not_trade:
+                continue
             alpha_ratio = abs(alpha)
             print("Sell ", stock, alpha_ratio)
             self.client.sell(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
         for stock, alpha in action_dicts[0].items(): # buy
+            if stock in not_trade:
+                continue
             alpha_ratio = abs(alpha)
             print("Buy ", stock, alpha_ratio)
             self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
@@ -91,16 +106,23 @@ class NeoInvest:
             if data == -1:
                 break
             
+            not_trade = []
             trade_dict = {}
             for symbol in self.symbols:
                 trade_dict[symbol] = 0
             
-            buy_list, sell_list = self.MABT.action(self.symbols, data)
-            for stock in buy_list:
-                trade_dict[stock] += 0.2
-            for stock in sell_list:
-                trade_dict[stock] -= 0.2
-            
+            for symbol in self.symbols:
+                if not (symbol in self.trend_predictors):
+                    continue
+                if bar > self.trend_predictors[symbol].minimal_data_length:
+                    trend = self.trend_predictors[symbol].predict(raw.iloc[bar-self.trend_predictors[symbol].minimal_data_length:bar], symbol)
+                    if trend == 2:
+                        trade_dict[symbol] += 0.3
+                    elif trend == 0:
+                        trade_dict[symbol] -= 0.8
+                    else:
+                        not_trade.append(symbol)
+                        
             if bar != 0 and bar >= window:
                 price1, price2 = data["norm_price_series"][self.symbols[0]+"_Price"], data["norm_price_series"][self.symbols[1]+"_Price"]
                 price1 = price1[bar - window:bar]
@@ -112,15 +134,18 @@ class NeoInvest:
                     trade_dict[s] -= alpha_ratio
             
             action_dicts = [utils.process_weights({k: v for k, v in trade_dict.items() if v > 0}), {k: v for k, v in trade_dict.items() if v < 0}]
-            print(action_dicts)
             for stock, alpha in action_dicts[1].items(): # sell
+                if stock in not_trade:
+                    continue
                 alpha_ratio = abs(alpha)
                 bt.sell(stock, alpha_ratio)
             for stock, alpha in action_dicts[0].items(): # buy
+                if stock in not_trade:
+                    continue
                 alpha_ratio = abs(alpha)
                 bt.buy(stock, alpha_ratio)
 
-            bt.print_stock_weights()
+            #bt.print_stock_weights()
             bar += 1
         
         if print_result:
