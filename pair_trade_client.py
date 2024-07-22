@@ -61,8 +61,7 @@ while True:
         print(f"{', '.join(symbols)}에 관해서 올슈타인 울렌벡 모델 전략을 가동합니다.")
         
         for hour in range(9, 16):
-            schedule.every().day.at(f"{hour:02d}:01").do(action)
-        schedule.every().day.at("15:29").do(action)
+            schedule.every().day.at(f"{hour:02d}:25").do(action)
         while True:
             schedule.run_pending()
             time.sleep(1)

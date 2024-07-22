@@ -10,6 +10,7 @@ def get_high_corr_pairs(start, end):
     for key, value in utils.THEMES.items():
         stocks = list(utils.get_theme_stocks(value).keys())
         df, symbols = utils.load_historical_datas(stocks, start, end, '1h')
+        df = df.filter(regex='_Price$')
         corr_matrix = df.corr()
         corr_pairs = corr_matrix.unstack()
         high_corr_pairs = corr_pairs[(corr_pairs < 1) & (corr_pairs >= 0.9)]

@@ -45,7 +45,7 @@ class NeoInvest:
         
         self.OU = OU()
         self.MABT = MABreakThrough()
-        start, end, interval = utils.today_before(50), utils.today(), '1h'
+        start, end, interval = utils.today_before(120), utils.today(), '1h'
         self.trend_predictors = model.create_trend_predictors(self.symbols, start, end, interval)
         self.raw_data = self._create_init_data(self.symbols, start, end, interval)
         

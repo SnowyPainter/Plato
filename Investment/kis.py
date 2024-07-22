@@ -88,7 +88,8 @@ class KISClient:
     def calculate_evaluated(self):
         evaluate_stocks = 0
         for stock, qty in self.stocks_qty.items():
-            evaluate_stocks += self.stocks_qty[stock] * self.get_price(stock)
+            pr, hpr, lpr = self.get_price(stock)
+            evaluate_stocks += self.stocks_qty[stock] * pr
         return self.current_amount + evaluate_stocks
     
     def buy(self, symbol, price, ratio):

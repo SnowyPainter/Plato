@@ -19,8 +19,10 @@ def today_before(day, tz = 'Asia/Seoul'):
     return datetime.now(pytz.timezone(tz)) - timedelta(days=day)
 
 THEMES = {
-    "HBM" : 536,
-    "뉴로모픽" : 556
+    #"HBM" : 536,
+    #"뉴로모픽" : 556,
+    "우크라이나 재건" : 517,
+    "조선" : 30,
 }
 
 def get_theme_stocks(theme_no):

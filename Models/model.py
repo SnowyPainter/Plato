@@ -51,6 +51,7 @@ class TrendPredictor:
 
         train_accuracy = accuracy_score(y_train, y_train_pred)
         test_accuracy = accuracy_score(y_test, y_test_pred)
+        print(train_accuracy, test_accuracy)
         return train_accuracy, test_accuracy
     
     def predict(self, raw_df, symbol):

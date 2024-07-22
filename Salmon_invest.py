@@ -19,7 +19,8 @@ class SalmonInvest:
         df = {}
         for symbol in symbols:
             code = symbol.split('.')[0]
-            df[symbol+"_Price"] = self.client.get_price(code)
+            pr, hpr, lpr = self.client.get_price(code)
+            df[symbol+"_Price"] = pr
         df = pd.DataFrame(df, index=[datetime.now()])
         return df
 
