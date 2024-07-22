@@ -37,6 +37,9 @@ class NeoInvest:
         raw_data, symbols = utils.load_historical_datas(symbols, start, end, interval)
         raw_data.index = pd.to_datetime(raw_data.index).tz_localize(None)
         raw_data.drop(columns=[col for col in raw_data.columns if col.endswith('_Volume')], inplace=True)
+        
+        raw_data.dropna(inplace=True)
+        
         return raw_data
 
     def __init__(self, symbol1, symbol2, current_amount):
@@ -48,7 +51,7 @@ class NeoInvest:
         start, end, interval = utils.today_before(120), utils.today(), '1h'
         self.trend_predictors = model.create_trend_predictors(self.symbols, start, end, interval)
         self.raw_data = self._create_init_data(self.symbols, start, end, interval)
-        
+
     def append_current_data(self):
         df = self._get_current_prices(self.symbols)
         self.raw_data = pd.concat([self.raw_data, df])

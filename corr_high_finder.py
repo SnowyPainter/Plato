@@ -5,10 +5,16 @@ import Neo_invest
 
 import json
 
-def get_high_corr_pairs(start, end):
+def get_high_corr_pairs(start, end, themes):
     pairs = []
-    for key, value in utils.THEMES.items():
+    for key, value in themes.items():
         stocks = list(utils.get_theme_stocks(value).keys())
+        
+        #거래 중지 종목
+        removed = ["458320.KQ"]
+        for stock in removed:
+            stocks.remove(stock)
+        
         df, symbols = utils.load_historical_datas(stocks, start, end, '1h')
         df = df.filter(regex='_Price$')
         corr_matrix = df.corr()
@@ -28,10 +34,10 @@ def filter_pairs(pairs, kospi=True):
         filtered.append((pair[0].replace('_Price', ''), pair[1].replace('_Price', '')))
     return filtered
 
-def get_high_backtest_result(pairs, start, end):
+def get_high_backtest_result(pairs, start, end, result_fname="recommend stocks"):
     results = {}
     for pair in pairs:
-        name = pair[0] + pair[1]
+        name = pair[0] + " " + pair[1]
         neo = Neo_invest.NeoInvest(pair[0], pair[1], 1000000000)
         result = neo.backtest(start, end, print_result=False)
         results[name] = result
@@ -40,15 +46,6 @@ def get_high_backtest_result(pairs, start, end):
     best_max_key = max(results, key=lambda k: results[k]['best'])
     worst_min_key = min(results, key=lambda k: results[k]['worst'])
     end_max_key = max(results, key=lambda k: results[k]['end'])
-
-    print("Max Sharp : ", sharp_max_key)
-    print(results[sharp_max_key])
-    print("Max Best : ", best_max_key)
-    print(results[best_max_key])
-    print("Max Worst : ", worst_min_key)
-    print(results[worst_min_key])
-    print("Max End : ", end_max_key)
-    print(results[end_max_key])
     
     text = f"Best Sharp : {sharp_max_key} \n"
     text += json.dumps(results[sharp_max_key], sort_keys=True, indent=4) + "\n"
@@ -59,10 +56,10 @@ def get_high_backtest_result(pairs, start, end):
     text += f"Worst Return : {worst_min_key} \n"
     text += json.dumps(results[worst_min_key], sort_keys=True, indent=4) + "\n"
     
-    with open("recommend stocks.txt", 'w') as f:
+    with open(f"{result_fname}.txt", 'w') as f:
         f.write(text)
     
-def find_stocks_to_invest():
+def find_stocks_to_invest(themes, theme_name):
     today = datetime.today()
     end = today.strftime('%Y-%m-%d')
     first_day_of_this_month = today.replace(day=1)
@@ -72,9 +69,10 @@ def find_stocks_to_invest():
 
     print(f"{start} ~ {end} | Recently most co-related stocks.")
 
-    pairs = get_high_corr_pairs(start, end)
+    pairs = get_high_corr_pairs(start, end, themes)
     pairs = filter_pairs(pairs, kospi=False)
+    
     if len(pairs) == 0:
         print("Cannot find high corr stocks in these themes.")
     else:
-        get_high_backtest_result(pairs, start, end)
+        get_high_backtest_result(pairs, start, end, theme_name)

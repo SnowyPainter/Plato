@@ -68,4 +68,5 @@ while True:
             schedule.run_pending()
             time.sleep(1)
     elif opt == "3":
-        corr_high_finder.find_stocks_to_invest()
+        for name, theme in utils.THEMES.items():
+            corr_high_finder.find_stocks_to_invest(theme, name)

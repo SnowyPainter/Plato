@@ -19,10 +19,20 @@ def today_before(day, tz = 'Asia/Seoul'):
     return datetime.now(pytz.timezone(tz)) - timedelta(days=day)
 
 THEMES = {
-    #"HBM" : 536,
-    #"뉴로모픽" : 556,
-    "우크라이나 재건" : 517,
-    "조선" : 30,
+    "반도체" : {
+        "HBM" : 536,
+        "뉴로모픽" : 556,
+    },
+    "건설" : {
+        "원자력 발전" : 205,
+        "우크라이나 재건" : 517,
+    },
+    "조선" : {
+        "조선" : 30,
+    },
+    "방산" : {
+        "우주항공과국방" : 284 
+    }
 }
 
 def get_theme_stocks(theme_no):
@@ -61,7 +71,11 @@ def load_historical_datas(symbols, start, end, interval='1d'):
             edit_symbols.remove(symbol)
             continue
         dfs.append(df)
-    return merge_dfs(dfs), edit_symbols
+    
+    merged = merge_dfs(dfs)
+    merged.dropna(inplace=True)
+    
+    return merged, edit_symbols
 
 def normalize(df):
     range_val = df.max() - df.min()
