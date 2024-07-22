@@ -7,7 +7,9 @@ import corr_high_finder
 import utils
 import connect_tester
 
-connect_tester.check_connection()
+i = input("Continue to Check Connection?(yes/no) : ")
+if i == 'yes':
+    connect_tester.check_connection()
 
 
 def get_symbols(option):
