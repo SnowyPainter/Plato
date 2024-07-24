@@ -51,13 +51,14 @@ class NeoInvest:
         start, end, interval = utils.today_before(120), utils.today(), '1h'
         self.trend_predictors = model.create_trend_predictors(self.symbols, start, end, interval)
         self.raw_data = self._create_init_data(self.symbols, start, end, interval)
+        self.bar = 0
 
     def append_current_data(self):
         df = self._get_current_prices(self.symbols)
         self.raw_data = pd.concat([self.raw_data, df])
         self.current_data = self._process_data(self.raw_data, utils.normalize(self.raw_data), -1)
     
-    def action(self):
+    def action(self, hour_divided_time=1):
         window = 62
         norm_raw = utils.normalize(self.raw_data)
         price1 = norm_raw[self.symbols[0]+"_Price"].tail(window)
@@ -69,14 +70,13 @@ class NeoInvest:
             trade_dict[symbol] = 0
         
         for symbol in self.symbols:
-            if not (symbol in self.trend_predictors):
+            if not (symbol in self.trend_predictors) or bar % hour_divided_time != 0:
                 continue
-            
             trend = self.trend_predictors[symbol].predict(self.raw_data.tail(self.trend_predictors[symbol].minimal_data_length), symbol)
             if trend == 2:
                 trade_dict[symbol] += 0.3
             elif trend == 0:
-                trade_dict[symbol] -= 0.8
+                trade_dict[symbol] *= 0.3
             else:
                 not_trade.append(symbol)
         
@@ -97,8 +97,12 @@ class NeoInvest:
             if stock in not_trade:
                 continue
             alpha_ratio = abs(alpha)
+            if alpha_ratio <= 0.1 and alpha_ratio >= 0.01:
+                alpha_ratio = 0.1
             print("Buy ", stock, alpha_ratio)
             self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
+        
+        self.bar += 1
         
     def backtest(self, start='2023-01-01', end='2024-01-01', interval='1h', print_result=True):
         bt = backtester.Backtester(self.symbols, start, end, interval, 10000000, 0.0025, self._process_data)
@@ -117,12 +121,12 @@ class NeoInvest:
             for symbol in self.symbols:
                 if not (symbol in self.trend_predictors):
                     continue
-                if bar > self.trend_predictors[symbol].minimal_data_length:
+                if bar > self.trend_predictors[symbol].minimal_data_length and (bar - self.trend_predictors[symbol].minimal_data_length) % 1 == 0:
                     trend = self.trend_predictors[symbol].predict(raw.iloc[bar-self.trend_predictors[symbol].minimal_data_length:bar], symbol)
                     if trend == 2:
                         trade_dict[symbol] += 0.3
                     elif trend == 0:
-                        trade_dict[symbol] -= 0.8
+                        trade_dict[symbol] *= 0.3
                     else:
                         not_trade.append(symbol)
                         

@@ -18,6 +18,15 @@ def today(tz = 'Asia/Seoul'):
 def today_before(day, tz = 'Asia/Seoul'):
     return datetime.now(pytz.timezone(tz)) - timedelta(days=day)
 
+def today_and_month_ago():
+    today = datetime.today()
+    end = today.strftime('%Y-%m-%d')
+    first_day_of_this_month = today.replace(day=1)
+    last_month_last_day = first_day_of_this_month - timedelta(days=1)
+    last_month_first_day = last_month_last_day.replace(day=1)
+    start = last_month_first_day.strftime('%Y-%m-%d')
+    return start, end
+
 THEMES = {
     "반도체" : {
         "HBM" : 536,
@@ -122,7 +131,6 @@ def df_ADX(df, column, period = 30):
     df[column+'_-DI'] = 100 * (df[column+'_-DM'].rolling(window=period).mean() / df[column+'_ATR'])
     df[column+'_DX'] = 100 * abs(df[column+'_+DI'] - df[column+'_-DI']) / (df[column+'_+DI'] + df[column+'_-DI'])
     return df[column+'_DX'].rolling(window=period).mean()
-
 
 def process_weights(buy_weights):
     cut_dict={key:min(value, 1) for key,value in buy_weights.items()}

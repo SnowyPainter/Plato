@@ -60,12 +60,7 @@ def get_high_backtest_result(pairs, start, end, result_fname="recommend stocks")
         f.write(text)
     
 def find_stocks_to_invest(themes, theme_name):
-    today = datetime.today()
-    end = today.strftime('%Y-%m-%d')
-    first_day_of_this_month = today.replace(day=1)
-    last_month_last_day = first_day_of_this_month - timedelta(days=1)
-    last_month_first_day = last_month_last_day.replace(day=1)
-    start = last_month_first_day.strftime('%Y-%m-%d')
+    start, end = utils.today_and_month_ago()
 
     print(f"{start} ~ {end} | Recently most co-related stocks.")
 

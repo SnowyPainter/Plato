@@ -32,6 +32,7 @@ def get_current_amount(option):
     return float(amount)
 
 invester = None
+hour_divided_time = 1
 options = ['백테스팅', '실전 투자', '종목 추천']
 
 while True:
@@ -55,15 +56,35 @@ while True:
         amount = get_current_amount(selected_option)
         invester = Neo_invest.NeoInvest(symbols[0], symbols[1], amount)
         
+        start, end = utils.today_and_month_ago()
+        interval = ''
+        h1_result = invester.backtest(start, end, '1h', False)
+        m30_result = invester.backtest(start, end, '30m', False)
+        
+        end_diff = abs(h1_result['end'] - m30_result['end'])
+        if end_diff <= 0.02:
+            if h1_result['sharp'] > m30_result['sharp']:
+                interval = '1h'
+            else:
+                interval = '30m'
+        else:
+            interval = '1h' if h1_result['end'] > m30_result['end'] else '30m'
+        
         def action():
-            global invester
+            global invester, interval
+            hdt = 1 if interval == '1h' else 2
             invester.append_current_data()
-            invester.action()
+            invester.action(hour_divided_time=hdt)
         
-        print(f"{', '.join(symbols)}에 관해서 올슈타인 울렌벡 모델 전략을 가동합니다.")
+        print(f"{', '.join(symbols)}에 관해서 OU+TP Strategy를 {interval} 마다 가동합니다.")
         
-        for hour in range(9, 16):
-            schedule.every().day.at(f"{hour:02d}:25").do(action)
+        if interval == '1h':
+            for hour in range(9, 16):
+                schedule.every().day.at(f"{hour:02d}:00").do(action)
+        elif interval == '30m':
+            for hour in range(9, 16):
+                schedule.every().day.at(f"{hour:02d}:00").do(action)
+                schedule.every().day.at(f"{hour:02d}:30").do(action)
         while True:
             schedule.run_pending()
             time.sleep(1)

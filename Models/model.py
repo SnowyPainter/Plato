@@ -18,16 +18,16 @@ class TrendPredictor:
 
     def _load_train_data(self, df, symbol):
         price_column = symbol+"_Price"
-        df[price_column+"_Lag"] = utils.df_lags(df, price_column, 2)
+        df[price_column+"_Lag"] = utils.df_lags(df, price_column, 5)
         df[price_column+"_MACD"] = utils.df_MACD(df, price_column)
-        df[price_column+"_RSI"] = utils.calculate_rsi(df, price_column, 24)
-        df[price_column+"_ADX"] = utils.df_ADX(df, symbol)
-        df[price_column+'_Signal_Line'] = df[price_column+'_MACD'].ewm(span=15, adjust=False).mean()
+        df[price_column+"_RSI"] = utils.calculate_rsi(df, price_column, 36)
+        df[price_column+"_ADX"] = utils.df_ADX(df, symbol, period=50)
+        df[price_column+'_Signal_Line'] = df[price_column+'_MACD'].ewm(span=50, adjust=False).mean()
         df[price_column+"_Trend"] = df.apply(lambda row: self._determine_macd_trend(row, price_column), axis=1)
         df.dropna(inplace=True)
         y = df[price_column+"_Trend"]
         df = utils.normalize(df)
-        self.minimal_data_length = 80
+        self.minimal_data_length = 100
         return df[[price_column+"_Lag", price_column+"_MACD", price_column+"_RSI", price_column+"_ADX", price_column]], y
     
     def _build_model(self):
