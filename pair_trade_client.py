@@ -80,11 +80,11 @@ while True:
         
         if interval == '1h':
             for hour in range(9, 16):
-                schedule.every().day.at(f"{hour:02d}:00").do(action)
+                schedule.every().day.at(f"{hour:02d}:01").do(action)
         elif interval == '30m':
             for hour in range(9, 16):
-                schedule.every().day.at(f"{hour:02d}:00").do(action)
-                schedule.every().day.at(f"{hour:02d}:30").do(action)
+                schedule.every().day.at(f"{hour:02d}:01").do(action)
+                schedule.every().day.at(f"{hour:02d}:31").do(action)
         while True:
             schedule.run_pending()
             time.sleep(1)

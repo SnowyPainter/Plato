@@ -70,7 +70,7 @@ class NeoInvest:
             trade_dict[symbol] = 0
         
         for symbol in self.symbols:
-            if not (symbol in self.trend_predictors) or bar % hour_divided_time != 0:
+            if not (symbol in self.trend_predictors) or self.bar % hour_divided_time != 0:
                 continue
             trend = self.trend_predictors[symbol].predict(self.raw_data.tail(self.trend_predictors[symbol].minimal_data_length), symbol)
             if trend == 2:
