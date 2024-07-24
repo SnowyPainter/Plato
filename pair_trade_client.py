@@ -1,6 +1,7 @@
 import time
 import schedule
 from datetime import datetime
+import os, re
 
 import Neo_invest
 import corr_high_finder
@@ -54,7 +55,12 @@ while True:
         selected_option = "Invest"
         symbols = get_symbols(selected_option)
         amount = get_current_amount(selected_option)
-        invester = Neo_invest.NeoInvest(symbols[0], symbols[1], amount)
+        exists_params = input("학습한 Parameter가 존재합니까?(yes/no) : ")
+        if exists_params == 'yes':
+            orders = utils.get_saved_orders(symbols)
+        else:
+            orders = {}
+        invester = Neo_invest.NeoInvest(symbols[0], symbols[1], amount, orders)
         
         start, end = utils.today_and_month_ago()
         interval = ''

@@ -6,6 +6,7 @@ from scipy.stats.mstats import winsorize
 import numpy as np
 from datetime import datetime, timedelta
 import pytz
+import os, re
 
 def merge_dfs(dfs):
     merged = dfs[0]
@@ -26,12 +27,25 @@ def today_and_month_ago():
     last_month_first_day = last_month_last_day.replace(day=1)
     start = last_month_first_day.strftime('%Y-%m-%d')
     return start, end
-
-import os
     
 def create_params_dir():
     if not os.path.isdir('./model_params'):
         os.makedirs('./model_params')
+
+def get_saved_orders(symbols):
+    orders = {}
+    for filename in os.listdir('./model_params'):
+        for symbol in symbols:
+            if filename == f"{symbol} ARIMA order.txt":
+                with open(os.path.join('./model_params', filename), 'r') as file:
+                    content = file.read().strip()
+                    match = re.match(r'\((\d+), (\d+), (\d+)\)', content)
+                    if match:
+                        p, d, q = map(int, match.groups())
+                        orders[symbol] = (p, d, q)
+                    else:
+                        print(f"파일 {filename}의 내용이 예상된 형식이 아닙니다.")
+    return orders
 
 THEMES = {
     "반도체" : {
@@ -92,6 +106,10 @@ def load_historical_datas(symbols, start, end, interval='1d'):
     merged.dropna(inplace=True)
     
     return merged, edit_symbols
+
+def nplog(df):
+    data_log = df.apply(lambda x: np.log(x + 1))
+    return data_log
 
 def normalize(df):
     range_val = df.max() - df.min()

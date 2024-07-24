@@ -3,10 +3,11 @@ import numpy as np
 from statsmodels.tsa.arima.model import ARIMA
 from sklearn.metrics import mean_squared_error
 from itertools import product
+from pmdarima import auto_arima
 
 import utils
 
-class PricePredictor:
+class PricePredictorBT:
     def __init__(self, df):
         self.data = df
         self.model = None
@@ -58,12 +59,48 @@ class PricePredictor:
         print(f'Best order: {best_order}, RMSE: {best_rmse}')
         return best_order
 
-def create_price_predictor(df, symbols, orders={}, freq='1h'):
+class PricePredictor:
+    def __init__(self, df):
+        self.data = df
+
+    def preprocess_data(self, symbols, freq='H'):
+        self.data.index = pd.to_datetime(self.data.index)
+        inferred_freq = pd.infer_freq(self.data.index)
+        if inferred_freq is not None:
+            self.data = self.data.asfreq(inferred_freq)
+        else:
+            self.data = self.data.asfreq(freq)  # 기본 빈도를 일간으로 설정
+        for symbol in symbols:
+            self.data[symbol+"_Price"].interpolate(method='linear', inplace=True)
+
+    def train_model(self, price_column):
+        self.model = auto_arima(self.data[price_column], 
+                   seasonal=True, 
+                   m=6,
+                   stepwise=False, 
+                   trace=True, 
+                   error_action='ignore', 
+                   suppress_warnings=True, 
+                   approximation=True)
+        
+    def make_forecast(self, n):
+        forecast = self.model.predict(n_periods=n)
+        return forecast
+
+def create_price_predictor(df, symbols):
+    models = {}
+    for symbol in symbols:
+        pp = PricePredictor(df)
+        pp.train_model(symbol+"_Price")
+        models[symbol] = pp
+    return models
+
+def create_price_predictor_BT(df, symbols, orders={}, freq='1h'):
     utils.create_params_dir()
     
     models = {}
     for symbol in symbols:
-        pp = PricePredictor(df)
+        pp = PricePredictorBT(df)
         pp.preprocess_data(symbols, freq=("30min" if freq == '30m' else "H"))
         if not (symbol in orders):
             order = pp.find_best_order(symbol+"_Price")
@@ -74,5 +111,4 @@ def create_price_predictor(df, symbols, orders={}, freq='1h'):
             
         pp.train_model(symbol+"_Price", order)
         models[symbol] = pp
-        rmse = pp.evaluate_model(symbol+"_Price")
     return models
