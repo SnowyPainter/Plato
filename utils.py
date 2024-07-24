@@ -27,6 +27,12 @@ def today_and_month_ago():
     start = last_month_first_day.strftime('%Y-%m-%d')
     return start, end
 
+import os
+    
+def create_params_dir():
+    if not os.path.isdir('./model_params'):
+        os.makedirs('./model_params')
+
 THEMES = {
     "반도체" : {
         "HBM" : 536,

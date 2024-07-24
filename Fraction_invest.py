@@ -1,7 +1,7 @@
 from Alpha1.strategy import *
 from Alpha3.strategy import *
 from Alpha4.strategy import *
-from Models import model
+from Models import trend_predictor
 import backtester
 import utils
 from Investment import kis

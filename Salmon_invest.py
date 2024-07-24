@@ -2,7 +2,7 @@ from Investment import kis, nasdaq
 from Alpha1.strategy import *
 from Alpha3.strategy import *
 import utils
-from Models import model
+from Models import trend_predictor
 import backtester
 
 import itertools
@@ -56,7 +56,7 @@ class SalmonInvest:
         self.symbols = yfsymbols
         start, end, interval = utils.today_before(day_before), utils.today(), '1h'
         self.raw_data = self._create_init_data(yfsymbols, start, end, interval)
-        self.trend_predictors = model.create_trend_predictors(yfsymbols, start, end, interval)
+        self.trend_predictors = trend_predictor.create_trend_predictors(yfsymbols, start, end, interval)
     
     def append_current_data(self):
         df = self._get_current_prices(self.symbols)

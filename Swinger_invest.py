@@ -1,6 +1,5 @@
 from Alpha3.strategy import *
 from Alpha4.strategy import *
-from Models import model
 import backtester
 import utils
 from Investment import kis, nasdaq

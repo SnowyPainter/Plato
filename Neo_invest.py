@@ -1,7 +1,7 @@
 from Alpha1.strategy import *
 from Alpha5.strategy import *
 
-from Models import model
+from Models import trend_predictor, ARIMA
 import backtester
 import utils
 from Investment import kis
@@ -9,6 +9,7 @@ from Investment import kis
 from datetime import datetime
 import itertools
 import math
+import numpy as np
 import pandas as pd
 
 class NeoInvest:
@@ -42,15 +43,16 @@ class NeoInvest:
         
         return raw_data
 
-    def __init__(self, symbol1, symbol2, current_amount):
+    def __init__(self, symbol1, symbol2, current_amount, orders={}):
         self.symbols = [symbol1, symbol2]
         self.client = kis.KISClient(self.symbols[0], current_amount)
         
         self.OU = OU()
         self.MABT = MABreakThrough()
         start, end, interval = utils.today_before(120), utils.today(), '1h'
-        self.trend_predictors = model.create_trend_predictors(self.symbols, start, end, interval)
         self.raw_data = self._create_init_data(self.symbols, start, end, interval)
+        self.technical_trend_predictors = trend_predictor.create_trend_predictors(self.symbols, start, end, interval)
+        self.arima_trend_predictors = ARIMA.create_price_predictor(utils.normalize(self.raw_data), self.symbols, orders)
         self.bar = 0
 
     def append_current_data(self):
@@ -76,9 +78,9 @@ class NeoInvest:
             trade_dict[s] -= alpha_ratio
         
         for symbol in self.symbols:
-            if not (symbol in self.trend_predictors) or self.bar % hour_divided_time != 0:
+            if not (symbol in self.technical_trend_predictors) or self.bar % hour_divided_time != 0:
                 continue
-            trend = self.trend_predictors[symbol].predict(self.raw_data.tail(self.trend_predictors[symbol].minimal_data_length), symbol)
+            trend = self.technical_trend_predictors[symbol].predict(self.raw_data.tail(self.technical_trend_predictors[symbol].minimal_data_length), symbol)
             indic = "down" if trend == 0 else ("up" if trend == 2 else "sideway")
             print(f"{symbol} : {indic}")
             if trend == 2:
@@ -130,12 +132,18 @@ class NeoInvest:
                 for s in sell_list:
                     trade_dict[s] -= alpha_ratio
             
+            for stock, p in self.arima_trend_predictors.items():
+                y = p.make_forecast(10)
+                x = np.arange(len(y))
+                coefficients = np.polyfit(x, y, 1)
+                trade_dict[stock] += coefficients[0] * 20
+            
             for symbol in self.symbols:
-                if not (symbol in self.trend_predictors):
+                if not (symbol in self.technical_trend_predictors):
                     continue
                 hdt = 1 if interval == '1h' else 2
-                if bar > self.trend_predictors[symbol].minimal_data_length and (bar - self.trend_predictors[symbol].minimal_data_length) % hdt == 0:
-                    trend = self.trend_predictors[symbol].predict(raw.iloc[bar-self.trend_predictors[symbol].minimal_data_length:bar], symbol)
+                if bar > self.technical_trend_predictors[symbol].minimal_data_length and (bar - self.technical_trend_predictors[symbol].minimal_data_length) % hdt == 0:
+                    trend = self.technical_trend_predictors[symbol].predict(raw.iloc[bar-self.technical_trend_predictors[symbol].minimal_data_length:bar], symbol)
                     if trend == 2:
                         trade_dict[symbol] += 0.6
                     elif trend == 0:
