@@ -13,7 +13,8 @@ def get_high_corr_pairs(start, end, themes):
         #거래 중지 종목
         removed = ["458320.KQ"]
         for stock in removed:
-            stocks.remove(stock)
+            if stock in stocks:
+                stocks.remove(stock)
         
         df, symbols = utils.load_historical_datas(stocks, start, end, '1h')
         df = df.filter(regex='_Price$')
