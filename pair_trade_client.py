@@ -51,7 +51,7 @@ while True:
         print(f"기간 : {start} ~ {end}")
         invester = Neo_invest.NeoInvest(symbols[0], symbols[1], 10000000000)
         invester.backtest(start, end)
-    elif opt == "2":
+    elif "2" in opt:
         selected_option = "Invest"
         symbols = get_symbols(selected_option)
         amount = get_current_amount(selected_option)
@@ -62,19 +62,20 @@ while True:
             orders = {}
         invester = Neo_invest.NeoInvest(symbols[0], symbols[1], amount, orders)
         
-        start, end = utils.today_and_month_ago()
-        interval = ''
-        h1_result = invester.backtest(start, end, '1h', False)
-        m30_result = invester.backtest(start, end, '30m', False)
-        
-        end_diff = abs(h1_result['end'] - m30_result['end'])
-        if end_diff <= 0.02:
-            if h1_result['sharp'] > m30_result['sharp']:
-                interval = '1h'
+        interval = '30m'
+        if not ("skip" in opt):
+            start, end = utils.today_and_month_ago()
+            h1_result = invester.backtest(start, end, '1h', False)
+            m30_result = invester.backtest(start, end, '30m', False)
+            
+            end_diff = abs(h1_result['end'] - m30_result['end'])
+            if end_diff <= 0.02:
+                if h1_result['sharp'] > m30_result['sharp']:
+                    interval = '1h'
+                else:
+                    interval = '30m'
             else:
-                interval = '30m'
-        else:
-            interval = '1h' if h1_result['end'] > m30_result['end'] else '30m'
+                interval = '1h' if h1_result['end'] > m30_result['end'] else '30m'
         
         def action():
             global invester, interval

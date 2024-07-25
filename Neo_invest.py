@@ -113,11 +113,11 @@ class NeoInvest:
                 coefficients = np.polyfit(x, y, 1)
                 v = coefficients[0] * 300
                 serial_signal[stock] = (v if coefficients[0] > 0 else -v)
-                text += f"[ARIMA] {stock} goes {('Up' if coefficients[0] > 0 else 'Down')} | W:{(v if coefficients[0] > 0 else -v)}"
+                text += f"[ARIMA] {stock} goes {('Up' if coefficients[0] > 0 else 'Down')} | W:{(v if coefficients[0] > 0 else -v)} \n"
         
         for symbol in self.symbols:
             trade_dict[symbol] += (serial_signal[symbol] + tech_signal[symbol]) / 2
-        text += f"[Trade Dictionary] {trade_dict}"
+        text += f"[Trade Dictionary] {trade_dict} \n"
         
         action_dicts = [utils.process_weights({k: v for k, v in trade_dict.items() if v > 0}), {k: v for k, v in trade_dict.items() if v < 0}]
         for stock, alpha in action_dicts[1].items(): # sell
