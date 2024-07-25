@@ -57,7 +57,7 @@ class NeoInvest:
         self.raw_data = self._create_init_data(self.symbols, start, end, interval)
         self.technical_trend_predictors = trend_predictor.create_trend_predictors(self.symbols, start, end, interval)
         self.orders = orders
-        if self.orders == {} and not nobacktest:
+        if not (symbol1 in orders) or not (symbol2 in orders) or (self.orders == {} and not nobacktest):
             self.orders = utils.get_saved_orders(self.symbols)
             if self.orders == {}:
                 print(f"Get Params for Backtest")
@@ -71,7 +71,7 @@ class NeoInvest:
         self.current_data = self._process_data(self.raw_data, utils.normalize(self.raw_data), -1)
     
     def action(self, hour_divided_time=1):
-        window = hour_divided_time * 40
+        window = hour_divided_time * 50
         log = utils.nplog(self.raw_data)
         price1 = log[self.symbols[0]+"_Price"].tail(window)
         price2 = log[self.symbols[1]+"_Price"].tail(window)
@@ -84,19 +84,24 @@ class NeoInvest:
             trade_dict[symbol] = 0
             tech_signal[symbol] = 0
             serial_signal[symbol] = 0
-            
+        
+        text = ""
+        
         buy_list, sell_list, alpha_ratio = self.OU.get_signal(self.symbols[0], self.symbols[1], price1, price2)
+        
+        text += f"[OU] Buy {buy_list} | Sell {sell_list} | Alpha : {alpha_ratio} \n"
+        
         for b in buy_list:
             trade_dict[b] += alpha_ratio
         for s in sell_list:
             trade_dict[s] -= alpha_ratio
-        
         
         if self.bar % hour_divided_time == 0:
             for symbol in self.symbols:
                 if not (symbol in self.technical_trend_predictors):
                     continue
                 trend = self.technical_trend_predictors[symbol].predict(self.raw_data.tail(self.technical_trend_predictors[symbol].minimal_data_length), symbol)
+                text += f"[Tech] {symbol} goes {('Up' if trend == 2 else ('Down' if trend == 0 else 'Sideway'))} \n"
                 tech_signal[symbol] = (1 if trend == 2 else (-1 if trend == 0 else 0))
                 if trend == 1:
                     not_trade.append(symbol)
@@ -106,10 +111,13 @@ class NeoInvest:
                 y = p.make_forecast(10)
                 x = np.arange(len(y))
                 coefficients = np.polyfit(x, y, 1)
-                serial_signal[stock] = (1 if coefficients[0] > 0 else -1)
+                v = coefficients[0] * 300
+                serial_signal[stock] = (v if coefficients[0] > 0 else -v)
+                text += f"[ARIMA] {stock} goes {('Up' if coefficients[0] > 0 else 'Down')} | W:{(v if coefficients[0] > 0 else -v)}"
         
         for symbol in self.symbols:
             trade_dict[symbol] += (serial_signal[symbol] + tech_signal[symbol]) / 2
+        text += f"[Trade Dictionary] {trade_dict}"
         
         action_dicts = [utils.process_weights({k: v for k, v in trade_dict.items() if v > 0}), {k: v for k, v in trade_dict.items() if v < 0}]
         for stock, alpha in action_dicts[1].items(): # sell
@@ -117,7 +125,7 @@ class NeoInvest:
                 continue
             alpha_ratio = abs(alpha)
             print("Sell ", stock, alpha_ratio)
-            #self.client.sell(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
+            self.client.sell(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
         for stock, alpha in action_dicts[0].items(): # buy
             if stock in not_trade:
                 continue
@@ -125,7 +133,9 @@ class NeoInvest:
             if alpha_ratio <= 0.1 and alpha_ratio >= 0.01:
                 alpha_ratio = 0.1
             print("Buy ", stock, alpha_ratio)
-            #self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
+            self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
+        
+        print(text)
         
         self.bar += 1
         
@@ -136,7 +146,7 @@ class NeoInvest:
         bt = backtester.Backtester(self.symbols, start, end, interval, 10000000, 0.0025, self._process_data)
         bar = 0
         hdt = (2 if interval == '30m' else 1)
-        window = 40 * hdt
+        window = 50 * hdt
         while True:
             raw, data, today = bt.go_next()
             if data == -1:
@@ -167,7 +177,8 @@ class NeoInvest:
                     y = p.make_forecast(10)
                     x = np.arange(len(y))
                     coefficients = np.polyfit(x, y, 1)
-                    serial_signal[stock] = (1 if coefficients[0] > 0 else -1)
+                    v = coefficients[0] * 300
+                    serial_signal[stock] = (v if coefficients[0] > 0 else -v)
             
             for symbol in self.symbols:
                 hdt = 1 if interval == '1h' else 2
