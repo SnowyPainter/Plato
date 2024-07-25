@@ -12,13 +12,17 @@ import math
 import numpy as np
 import pandas as pd
 
+import warnings
+from statsmodels.tools.sm_exceptions import ConvergenceWarning
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
+
 class NeoInvest:
     def _process_data(self, raw, norm_raw, bar):
         price_columns = list(map(lambda symbol: symbol+"_Price", self.symbols))
-        LMA = norm_raw[price_columns].rolling(50).mean().iloc[bar]
-        SMA = norm_raw[price_columns].rolling(14).mean().iloc[bar]
+        LMA = norm_raw[price_columns].rolling(120).mean().iloc[bar]
+        SMA = norm_raw[price_columns].rolling(25).mean().iloc[bar]
         return {
-            "norm_price_series" : norm_raw[price_columns],
+            "norm_price_series" : utils.nplog(raw)[price_columns],
             "norm_price" : norm_raw[price_columns].iloc[bar],
             "price" : raw[price_columns].iloc[bar],
             "LMA" : LMA,
@@ -67,34 +71,34 @@ class NeoInvest:
         self.current_data = self._process_data(self.raw_data, utils.normalize(self.raw_data), -1)
     
     def action(self, hour_divided_time=1):
-        window = 62
-        norm_raw = utils.normalize(self.raw_data)
-        price1 = norm_raw[self.symbols[0]+"_Price"].tail(window)
-        price2 = norm_raw[self.symbols[1]+"_Price"].tail(window)
+        window = hour_divided_time * 40
+        log = utils.nplog(self.raw_data)
+        price1 = log[self.symbols[0]+"_Price"].tail(window)
+        price2 = log[self.symbols[1]+"_Price"].tail(window)
         
         not_trade = []
         trade_dict = {}
+        tech_signal = {}
+        serial_signal = {}
         for symbol in self.symbols:
             trade_dict[symbol] = 0
-        
+            tech_signal[symbol] = 0
+            serial_signal[symbol] = 0
+            
         buy_list, sell_list, alpha_ratio = self.OU.get_signal(self.symbols[0], self.symbols[1], price1, price2)
         for b in buy_list:
             trade_dict[b] += alpha_ratio
         for s in sell_list:
             trade_dict[s] -= alpha_ratio
         
+        
         if self.bar % hour_divided_time == 0:
             for symbol in self.symbols:
                 if not (symbol in self.technical_trend_predictors):
                     continue
                 trend = self.technical_trend_predictors[symbol].predict(self.raw_data.tail(self.technical_trend_predictors[symbol].minimal_data_length), symbol)
-                indic = "down" if trend == 0 else ("up" if trend == 2 else "sideway")
-                print(f"TEHCNICAL / {symbol} : {indic}")
-                if trend == 2:
-                    trade_dict[symbol] += 0.6
-                elif trend == 0:
-                    trade_dict[symbol] *= 0.3
-                else:
+                tech_signal[symbol] = (1 if trend == 2 else (-1 if trend == 0 else 0))
+                if trend == 1:
                     not_trade.append(symbol)
         if self.bar % (hour_divided_time * 2) == 0:
             self.arima_trend_predictors = ARIMA.create_price_predictor(utils.nplog(self.raw_data).tail(50), self.symbols)
@@ -102,9 +106,10 @@ class NeoInvest:
                 y = p.make_forecast(10)
                 x = np.arange(len(y))
                 coefficients = np.polyfit(x, y, 1)
-                indic = "up" if coefficients[0] > 0 else "down"
-                print(f"ARIMA / {symbol} : {indic}")
-                trade_dict[stock] += coefficients[0] * 20
+                serial_signal[stock] = (1 if coefficients[0] > 0 else -1)
+        
+        for symbol in self.symbols:
+            trade_dict[symbol] += (serial_signal[symbol] + tech_signal[symbol]) / 2
         
         action_dicts = [utils.process_weights({k: v for k, v in trade_dict.items() if v > 0}), {k: v for k, v in trade_dict.items() if v < 0}]
         for stock, alpha in action_dicts[1].items(): # sell
@@ -112,7 +117,7 @@ class NeoInvest:
                 continue
             alpha_ratio = abs(alpha)
             print("Sell ", stock, alpha_ratio)
-            self.client.sell(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
+            #self.client.sell(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
         for stock, alpha in action_dicts[0].items(): # buy
             if stock in not_trade:
                 continue
@@ -120,14 +125,18 @@ class NeoInvest:
             if alpha_ratio <= 0.1 and alpha_ratio >= 0.01:
                 alpha_ratio = 0.1
             print("Buy ", stock, alpha_ratio)
-            self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
+            #self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
         
         self.bar += 1
         
     def backtest(self, start='2023-01-01', end='2024-01-01', interval='1h', print_result=True):
+        
+        print(f"Backtest for {self.symbols} | {start} ~ {end} *{interval}")
+        
         bt = backtester.Backtester(self.symbols, start, end, interval, 10000000, 0.0025, self._process_data)
         bar = 0
-        window = 62
+        hdt = (2 if interval == '30m' else 1)
+        window = 40 * hdt
         while True:
             raw, data, today = bt.go_next()
             if data == -1:
@@ -135,8 +144,12 @@ class NeoInvest:
             
             not_trade = []
             trade_dict = {}
+            tech_signal = {}
+            serial_signal = {}
             for symbol in self.symbols:
                 trade_dict[symbol] = 0
+                tech_signal[symbol] = 0
+                serial_signal[symbol] = 0
             
             if bar != 0 and bar >= window:
                 price1, price2 = data["norm_price_series"][self.symbols[0]+"_Price"], data["norm_price_series"][self.symbols[1]+"_Price"]
@@ -148,26 +161,24 @@ class NeoInvest:
                 for s in sell_list:
                     trade_dict[s] -= alpha_ratio
             
-            if bar > 40 and bar % 4 == 0:
+            if bar > 30 and bar % (hdt*2) == 0:
                 self.arima_trend_predictors = ARIMA.create_price_predictor_BT(utils.nplog(self.raw_data)[0:bar], self.symbols, self.orders)
                 for stock, p in self.arima_trend_predictors.items():
                     y = p.make_forecast(10)
                     x = np.arange(len(y))
                     coefficients = np.polyfit(x, y, 1)
-                    trade_dict[stock] += coefficients[0] * 20
+                    serial_signal[stock] = (1 if coefficients[0] > 0 else -1)
             
             for symbol in self.symbols:
-                if not (symbol in self.technical_trend_predictors):
-                    continue
                 hdt = 1 if interval == '1h' else 2
                 if bar > self.technical_trend_predictors[symbol].minimal_data_length and (bar - self.technical_trend_predictors[symbol].minimal_data_length) % hdt == 0:
                     trend = self.technical_trend_predictors[symbol].predict(raw.iloc[bar-self.technical_trend_predictors[symbol].minimal_data_length:bar], symbol)
-                    if trend == 2:
-                        trade_dict[symbol] += 0.6
-                    elif trend == 0:
-                        trade_dict[symbol] *= 0.25
-                    else:
+                    tech_signal[symbol] = (1 if trend == 2 else (-1 if trend == 0 else 0))
+                    if trend == 1:
                         not_trade.append(symbol)
+            
+            for symbol in self.symbols:
+                trade_dict[symbol] += (serial_signal[symbol] + tech_signal[symbol]) / 2
             
             action_dicts = [utils.process_weights({k: v for k, v in trade_dict.items() if v > 0}), {k: v for k, v in trade_dict.items() if v < 0}]
             for stock, alpha in action_dicts[1].items(): # sell
