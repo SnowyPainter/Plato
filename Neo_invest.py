@@ -205,14 +205,23 @@ class NeoInvest:
                 if stock in not_trade:
                     continue
                 alpha_ratio = abs(alpha)
+                
+                # 하한선 - 얼마 이하가 되면 보충하여 매매
+                if alpha_ratio <= 0.03:
+                    alpha_ratio = 0.08
+                
                 bt.sell(stock, alpha_ratio)
             for stock, alpha in action_dicts[0].items(): # buy
                 if stock in not_trade:
                     continue
                 alpha_ratio = abs(alpha)
+                
+                # 하한선 - 얼마 이하가 되면 우선하여 매매
+                if alpha_ratio <= 0.05:
+                    alpha_ratio = 0.1
                 bt.buy(stock, alpha_ratio)
 
-            bt.print_stock_weights()
+            #bt.print_stock_weights()
             bar += 1
         
         if print_result:

@@ -172,9 +172,13 @@ def preprocess_weights(buy_weights, cash=1, limit=1):
             buy_weights[key] = weight
     if cash < 0:
         cash = 0
-    if len(cut_dict) > 0:
-        for s, w in buy_weights.items():
-            buy_weights[s] *= cash/limit
+    
+    for s, w in buy_weights.items():
+        w = buy_weights[s] * (cash/limit)
+        if w < 0.1:
+            break
+        else:
+            buy_weights[s] = w
     return buy_weights
 
 def calculate_sale_percentage(current_percentage, target_percentage):
