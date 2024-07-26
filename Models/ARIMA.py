@@ -5,6 +5,10 @@ from sklearn.metrics import mean_squared_error
 from itertools import product
 from pmdarima import auto_arima
 
+import warnings
+from statsmodels.tools.sm_exceptions import ConvergenceWarning
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
+
 import utils
 
 class PricePredictorBT:

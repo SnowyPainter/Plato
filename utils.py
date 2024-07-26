@@ -107,6 +107,11 @@ def load_historical_datas(symbols, start, end, interval='1d'):
     
     return merged, edit_symbols
 
+def coef(y):
+    x = np.arange(len(y))
+    coefficients = np.polyfit(x, y, 1)
+    return coefficients[0]
+
 def nplog(df):
     data_log = df.apply(lambda x: np.log(x + 1))
     return data_log

@@ -1,7 +1,7 @@
 from Alpha1.strategy import *
 from Alpha5.strategy import *
 
-from Models import trend_predictor, ARIMA
+from Models import trend_predictor, ARIMA, GJRGARCH 
 import backtester
 import utils
 from Investment import kis
@@ -13,8 +13,7 @@ import numpy as np
 import pandas as pd
 
 import warnings
-from statsmodels.tools.sm_exceptions import ConvergenceWarning
-warnings.filterwarnings("ignore", category=ConvergenceWarning)
+warnings.filterwarnings("ignore")
 
 class NeoInvest:
     def _process_data(self, raw, norm_raw, bar):
@@ -102,7 +101,7 @@ class NeoInvest:
                     continue
                 trend = self.technical_trend_predictors[symbol].predict(self.raw_data.tail(self.technical_trend_predictors[symbol].minimal_data_length), symbol)
                 text += f"[Tech] {symbol} goes {('Up' if trend == 2 else ('Down' if trend == 0 else 'Sideway'))} \n"
-                tech_signal[symbol] = (1 if trend == 2 else (-1 if trend == 0 else 0))
+                tech_signal[symbol] = (0.6 if trend == 2 else (-0.6 if trend == 0 else 0))
                 if trend == 1:
                     not_trade.append(symbol)
         if self.bar % (hour_divided_time * 2) == 0:
@@ -156,10 +155,13 @@ class NeoInvest:
             trade_dict = {}
             tech_signal = {}
             serial_signal = {}
+            volatility_risk_weight = {}
+            
             for symbol in self.symbols:
                 trade_dict[symbol] = 0
                 tech_signal[symbol] = 0
                 serial_signal[symbol] = 0
+                volatility_risk_weight[symbol] = 1
             
             if bar != 0 and bar >= window:
                 price1, price2 = data["norm_price_series"][self.symbols[0]+"_Price"], data["norm_price_series"][self.symbols[1]+"_Price"]
@@ -172,14 +174,21 @@ class NeoInvest:
                     trade_dict[s] -= alpha_ratio
             
             if bar > 30 and bar % (hdt*2) == 0:
-                self.arima_trend_predictors = ARIMA.create_price_predictor_BT(utils.nplog(self.raw_data)[0:bar], self.symbols, self.orders)
+                self.arima_trend_predictors = ARIMA.create_price_predictor_BT(utils.nplog(raw)[0:bar], self.symbols, self.orders)
                 for stock, p in self.arima_trend_predictors.items():
                     y = p.make_forecast(10)
-                    x = np.arange(len(y))
-                    coefficients = np.polyfit(x, y, 1)
-                    v = coefficients[0] * 300
-                    serial_signal[stock] = (v if coefficients[0] > 0 else -v)
-            
+                    a = utils.coef(y)
+                    v = a * 300
+                    serial_signal[stock] = (v if a > 0 else -v)
+
+            '''
+            if bar > 50 and bar % (hdt*2) == 0:
+                vfs = GJRGARCH.create_vfs(self.symbols, raw[bar-50:bar])
+                for stock, vf in vfs.items():
+                    a = utils.coef(vf.make_forecast(30))
+                    volatility_risk_weight[stock] = 0.8 if a > 0 else 1.3
+            '''
+                     
             for symbol in self.symbols:
                 hdt = 1 if interval == '1h' else 2
                 if bar > self.technical_trend_predictors[symbol].minimal_data_length and (bar - self.technical_trend_predictors[symbol].minimal_data_length) % hdt == 0:
@@ -189,7 +198,7 @@ class NeoInvest:
                         not_trade.append(symbol)
             
             for symbol in self.symbols:
-                trade_dict[symbol] += (serial_signal[symbol] + tech_signal[symbol]) / 2
+                trade_dict[symbol] += (serial_signal[symbol] + tech_signal[symbol] / 2)
             
             action_dicts = [utils.process_weights({k: v for k, v in trade_dict.items() if v > 0}), {k: v for k, v in trade_dict.items() if v < 0}]
             for stock, alpha in action_dicts[1].items(): # sell
