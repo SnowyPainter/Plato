@@ -39,7 +39,7 @@ def get_high_backtest_result(pairs, start, end, result_fname="recommend stocks")
     results = {}
     for pair in pairs:
         name = pair[0] + " " + pair[1]
-        neo = Neo_invest.NeoInvest(pair[0], pair[1], 1000000000)
+        neo = Neo_invest.NeoInvest(pair[0], pair[1], 1000000000, nolog=True)
         result = neo.backtest(start, end, print_result=False)
         results[name] = result
     

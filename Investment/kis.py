@@ -55,11 +55,12 @@ class KISClient:
         else:
             return current_units
 
-    def __init__(self, name, current_amount):
-        self.logger = logger.Logger(name)
+    def __init__(self, name, current_amount, nolog=False):
+        self.logger = logger.Logger(name, nolog)
         if not os.path.exists('./settings'):
             os.makedirs('./settings')
-        self.trade_logger = logger.TradeLogger(f"./settings/{name}_Trades.csv")
+        
+        self.trade_logger = logger.TradeLogger(f"./settings/{name}_Trades.csv", nolog)
         self.keys = self._read_config()
         if self.keys == -1:
             self.logger.log("Failed to load ./settings/keys.ini")

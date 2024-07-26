@@ -46,9 +46,9 @@ class NeoInvest:
         
         return raw_data
 
-    def __init__(self, symbol1, symbol2, current_amount, orders={}, nobacktest=False):
+    def __init__(self, symbol1, symbol2, current_amount, orders={}, nobacktest=False, nolog=False):
         self.symbols = [symbol1, symbol2]
-        self.client = kis.KISClient(self.symbols[0], current_amount)
+        self.client = kis.KISClient(self.symbols[0], current_amount, nolog)
         
         self.OU = OU()
         self.MABT = MABreakThrough()
