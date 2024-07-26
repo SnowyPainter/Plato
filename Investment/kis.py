@@ -26,26 +26,46 @@ class KISClient:
             self.logger.log(f"{str(e)}")
             return -1
     
-    def _get_balance(self):
+    # Get balance는 딱 한번 호출됨.
+    
+    def _get_acc_status(self):
         broker = self.broker
         resp = broker.fetch_balance()
-        amount = int(resp['output2'][0]['prvs_rcdl_excc_amt'])
-        init_amount = int(resp['output2'][0]['tot_evlu_amt'])
+        #amount = int(resp['output2'][0]['prvs_rcdl_excc_amt'])
+        #init_amount = int(resp['output2'][0]['tot_evlu_amt'])
         stocks_qty = {}
         avgp = {}
         for stock in resp['output1']:
             stocks_qty[stock['pdno']] = int(stock['hldg_qty'])
             avgp[stock['pdno']] = float(stock['pchs_avg_pric'])
-        return init_amount, amount, stocks_qty, avgp
+        
+        return stocks_qty, avgp
+    
+    #매입 단가 기준 자산 (투입 금액)
+    def _asset_bought_amount(self):
+        asset_before_evlu = 0
+        for symbol in self.symbols:
+            symbol = symbol[:6]
+            if symbol in self.stocks_qty and symbol in self.stocks_avg_price:
+                asset_before_evlu += self.stocks_qty[symbol] * self.stocks_avg_price[symbol]
+        return asset_before_evlu
+    
+    def max_operate_cash(self):
+        asset_before_evlu = self._asset_bought_amount()
+        operate_cash = self.max_operate_amount - asset_before_evlu
+        return operate_cash
     
     def _max_units_could_affordable(self, ratio, init_amount, current_amount, price, fee):
         money = init_amount * ratio * (1+fee)
-        if current_amount >= money:
-            return math.floor(money / price)
-        elif current_amount >= 0:
-            return math.floor(current_amount / price)
-        else:
-            return 0
+        qty = math.floor(money / price)
+        
+        bought_asset = self._asset_bought_amount()
+        if bought_asset > self.max_operate_amount:
+            qty = 0
+        if bought_asset + (qty * price) > self.max_operate_amount:
+            qty = math.floor(((self.max_operate_amount - bought_asset) * (1 + fee)) / price)
+        
+        return qty
 
     def _max_units_could_sell(self, ratio, init_amount, current_units, price, fee):
         money = init_amount * ratio * (1-fee)
@@ -55,23 +75,40 @@ class KISClient:
         else:
             return current_units
 
-    def __init__(self, name, current_amount, nolog=False):
-        self.logger = logger.Logger(name, nolog)
+    def __init__(self, symbols, max_operate_amount,nolog=False):
+        name = symbols[0]
         if not os.path.exists('./settings'):
             os.makedirs('./settings')
-        
         self.trade_logger = logger.TradeLogger(f"./settings/{name}_Trades.csv", nolog)
+        self.logger = logger.Logger(name, nolog)
         self.keys = self._read_config()
         if self.keys == -1:
             self.logger.log("Failed to load ./settings/keys.ini")
             exit()
+        self.symbols = symbols
+        self.max_operate_amount = max_operate_amount
+        self.init_amount = self.max_operate_amount
+        self.current_price = {}
         
         self.broker = mojito.KoreaInvestment(api_key=self.keys["APIKEY"], api_secret=self.keys["APISECRET"], acc_no=self.keys["ACCNO"], mock=False)
-        self.init_amount, self.current_amount, self.stocks_qty, self.stocks_avg_price = self._get_balance()
-        self.current_amount = current_amount
+        self.stocks_qty, self.stocks_avg_price = self._get_acc_status()
+        
+        self.current_amount = self.max_operate_cash()
         self.logger.log(f"Loading balance ...")
-        self.logger.log(f"Initial Amount : {self.init_amount}")
-        self.logger.log(f"Current Amount : {self.current_amount}")
+        self.logger.log(f"Max Operating Asset Amount : {self.max_operate_amount}")
+        self.logger.log(f"Affordable Cash : {self.current_amount}")
+        
+        '''
+        
+        투자 비율의 대상을 일정 금액(max_operate_amount)으로 지정하게 된다면
+        50%, 50% 비율로 각각 매매할 때 어느 한 주식에 대한 50% 비율이 실제 가지고 있는 돈 보다 많아서 50%가 사실상 100%로 체결되어 그 다음 것을 체결하지 못함.
+        
+        투자 비율의 대상을 가변적으로(max_operate_cash()) 지정하게 된다면
+        200만원이 있고, 주식 가치가 190만원일 때 실제 투자 가능 금액은 10만원이라 그 중에서 비율(ex 10% -> 1만원)로 하면 금액이 너무 작아
+        매수, 매도 시그널이 의미가 없어짐.
+        
+        '''
+        
         for stock, qty in self.stocks_qty.items():
             self.logger.log(f"{stock} : {qty} - {self.stocks_avg_price[stock]}")
         
@@ -84,14 +121,12 @@ class KISClient:
         resp = self.broker.fetch_price(symbol)
         if not 'output' in resp:
             return self.get_price(symbol)
-        return float(resp['output']['stck_prpr']), float(resp['output']['stck_hgpr']), float(resp['output']['stck_lwpr'])
+        pr = float(resp['output']['stck_prpr'])
+        self.current_price[symbol] = pr
+        return pr, float(resp['output']['stck_hgpr']), float(resp['output']['stck_lwpr'])
     
     def calculate_evaluated(self):
-        evaluate_stocks = 0
-        for stock, qty in self.stocks_qty.items():
-            pr, hpr, lpr = self.get_price(stock)
-            evaluate_stocks += self.stocks_qty[stock] * pr
-        return self.current_amount + evaluate_stocks
+        return -1 * (self.max_operate_cash() - self.max_operate_amount)
     
     def buy(self, symbol, price, ratio):
         price = int(price)
@@ -116,7 +151,7 @@ class KISClient:
             self.stocks_qty[code] = 0
         self.stocks_qty[code] += qty
         self.trade_logger.log("buy", symbol, qty, price, self.calculate_evaluated())
-        self.logger.log(f"Buy {code} - {qty}({ratio*100}%), price: {price}, {resp['msg1']} | current {self.current_amount}")
+        self.logger.log(f"Buy {code} - {qty}({ratio*100}%, {qty*price}), price: {price}, {resp['msg1']} | current {self.current_amount}")
         
     def sell(self, symbol, price, ratio):
         code = symbol.split('.')[0]
@@ -134,4 +169,4 @@ class KISClient:
         self.current_amount += qty * price * (1 - 0.0025)
         self.stocks_qty[code] -= qty
         self.trade_logger.log("sell", symbol, qty, price, self.calculate_evaluated())
-        self.logger.log(f"Sell {code} - {qty}({ratio*100}%), price: {price}, {resp['msg1']} | current {self.current_amount}")
+        self.logger.log(f"Sell {code} - {qty}({ratio*100}%, {qty*price}), price: {price}, {resp['msg1']} | current {self.current_amount}")

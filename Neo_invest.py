@@ -46,10 +46,9 @@ class NeoInvest:
         
         return raw_data
 
-    def __init__(self, symbol1, symbol2, current_amount, orders={}, nobacktest=False, nolog=False):
+    def __init__(self, symbol1, symbol2, max_operate_amount, orders={}, nobacktest=False, nolog=False):
         self.symbols = [symbol1, symbol2]
-        self.client = kis.KISClient(self.symbols[0], current_amount, nolog)
-        
+        self.client = kis.KISClient(self.symbols, max_operate_amount, nolog)
         self.OU = OU()
         self.MABT = MABreakThrough()
         start, end, interval = utils.today_before(120), utils.today(), '1h'
@@ -116,9 +115,9 @@ class NeoInvest:
         
         for symbol in self.symbols:
             trade_dict[symbol] += (serial_signal[symbol] + tech_signal[symbol]) / 2
-        text += f"[Trade Dictionary] {trade_dict} \n"
-        
-        action_dicts = [utils.process_weights({k: v for k, v in trade_dict.items() if v > 0}), {k: v for k, v in trade_dict.items() if v < 0}]
+
+        cash, limit = self.client.max_operate_cash(), self.client.max_operate_amount
+        action_dicts = [utils.preprocess_weights({k: v for k, v in trade_dict.items() if v > 0}, cash, limit), {k: v for k, v in trade_dict.items() if v < 0}]
         for stock, alpha in action_dicts[1].items(): # sell
             if stock in not_trade:
                 continue
@@ -129,8 +128,6 @@ class NeoInvest:
             if stock in not_trade:
                 continue
             alpha_ratio = abs(alpha)
-            if alpha_ratio <= 0.1 and alpha_ratio >= 0.01:
-                alpha_ratio = 0.1
             print("Buy ", stock, alpha_ratio)
             self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
         
@@ -142,7 +139,8 @@ class NeoInvest:
         
         print(f"Backtest for {self.symbols} | {start} ~ {end} *{interval}")
         
-        bt = backtester.Backtester(self.symbols, start, end, interval, 10000000, 0.0025, self._process_data)
+        limit = 1000000000
+        bt = backtester.Backtester(self.symbols, start, end, interval, limit, 0.0025, self._process_data)
         bar = 0
         hdt = (2 if interval == '30m' else 1)
         window = 50 * hdt
@@ -200,7 +198,9 @@ class NeoInvest:
             for symbol in self.symbols:
                 trade_dict[symbol] += (serial_signal[symbol] + tech_signal[symbol] / 2)
             
-            action_dicts = [utils.process_weights({k: v for k, v in trade_dict.items() if v > 0}), {k: v for k, v in trade_dict.items() if v < 0}]
+            cash = bt.current_amount
+            action_dicts = [utils.preprocess_weights({k: v for k, v in trade_dict.items() if v > 0}, cash, limit), {k: v for k, v in trade_dict.items() if v < 0}]
+            
             for stock, alpha in action_dicts[1].items(): # sell
                 if stock in not_trade:
                     continue
@@ -212,7 +212,7 @@ class NeoInvest:
                 alpha_ratio = abs(alpha)
                 bt.buy(stock, alpha_ratio)
 
-            #bt.print_stock_weights()
+            bt.print_stock_weights()
             bar += 1
         
         if print_result:

@@ -100,7 +100,7 @@ class FractionInvest:
         
         alphas = {key:0.1 * (value) for key, value in weights.items()}
         print(alphas)
-        action_dicts = [utils.process_weights({k: v for k, v in alphas.items() if v > 0}), {k: v for k, v in alphas.items() if v < 0}]
+        action_dicts = [utils.preprocess_weights({k: v for k, v in alphas.items() if v > 0}), {k: v for k, v in alphas.items() if v < 0}]
         for stock, alpha in action_dicts[1].items(): # sell
             alpha_ratio = abs(alpha)
             print(f"sell {stock} {alpha_ratio}")
@@ -161,7 +161,7 @@ class FractionInvest:
                     weights[stock] = 0
             
             alphas = {key:0.1 * (value) for key, value in weights.items()}
-            action_dicts = [utils.process_weights({k: v for k, v in alphas.items() if v > 0}), {k: v for k, v in alphas.items() if v < 0}]
+            action_dicts = [utils.preprocess_weights({k: v for k, v in alphas.items() if v > 0}), {k: v for k, v in alphas.items() if v < 0}]
             
             for stock, alpha in action_dicts[1].items(): # sell
                 alpha_ratio = abs(alpha)

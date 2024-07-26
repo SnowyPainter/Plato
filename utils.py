@@ -162,7 +162,7 @@ def df_ADX(df, column, period = 30):
     df[column+'_DX'] = 100 * abs(df[column+'_+DI'] - df[column+'_-DI']) / (df[column+'_+DI'] + df[column+'_-DI'])
     return df[column+'_DX'].rolling(window=period).mean()
 
-def process_weights(buy_weights):
+def preprocess_weights(buy_weights, cash=1, limit=1):
     cut_dict={key:min(value, 1) for key,value in buy_weights.items()}
     total = sum(cut_dict.values())
     for key, weight in cut_dict.items():
@@ -170,6 +170,11 @@ def process_weights(buy_weights):
             buy_weights[key] = weight / total
         else:
             buy_weights[key] = weight
+    if cash < 0:
+        cash = 0
+    if len(cut_dict) > 0:
+        for s, w in buy_weights.items():
+            buy_weights[s] *= cash/limit
     return buy_weights
 
 def calculate_sale_percentage(current_percentage, target_percentage):

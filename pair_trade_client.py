@@ -27,10 +27,10 @@ def get_bt_term(option):
     end = input(f"종료 날짜를 입력하세요(20xx-xx-xx) : ")
     return start, end
 
-def get_current_amount(option):
+def get_amounts(option):
     print(f"{option} 선택됨.")
-    amount = input("투자 허용 금액을 입력하세요 : ")
-    return float(amount)
+    max_operate_amount = input("최대 운용 가능 금액을 입력하세요 : ")
+    return float(max_operate_amount)
 
 invester = None
 hour_divided_time = 1
@@ -54,13 +54,13 @@ while True:
     elif "2" in opt:
         selected_option = "Invest"
         symbols = get_symbols(selected_option)
-        amount = get_current_amount(selected_option)
+        cash, max_operate_amount = get_amounts(selected_option)
         exists_params = input("학습한 Parameter가 존재합니까?(yes/no) : ")
         if exists_params == 'yes':
             orders = utils.get_saved_orders(symbols)
         else:
             orders = {}
-        invester = Neo_invest.NeoInvest(symbols[0], symbols[1], amount, orders)
+        invester = Neo_invest.NeoInvest(symbols[0], symbols[1], max_operate_amount, orders)
         
         interval = '30m'
         if not ("skip" in opt):

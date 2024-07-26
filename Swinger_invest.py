@@ -77,7 +77,7 @@ class SwingerInvest:
         
         print(trade_dict)
         alphas = {key:0.1 * value for key, value in trade_dict.items()}
-        action_dicts = [utils.process_weights({k: v for k, v in alphas.items() if v > 0}), {k: v for k, v in alphas.items() if v < 0}]
+        action_dicts = [utils.preprocess_weights({k: v for k, v in alphas.items() if v > 0}), {k: v for k, v in alphas.items() if v < 0}]
         for stock, alpha in action_dicts[1].items(): # sell
             alpha_ratio = abs(alpha)
             print(f"sell {stock} {alpha_ratio}")
@@ -126,7 +126,7 @@ class SwingerInvest:
             
             
             alphas = {key:0.1 * value for key, value in weights.items()}
-            action_dicts = [utils.process_weights({k: v for k, v in alphas.items() if v > 0}), {k: v for k, v in alphas.items() if v < 0}]
+            action_dicts = [utils.preprocess_weights({k: v for k, v in alphas.items() if v > 0}), {k: v for k, v in alphas.items() if v < 0}]
             for stock, alpha in action_dicts[1].items(): # sell
                 alpha_ratio = abs(alpha)
                 bt.sell(stock, alpha_ratio)
