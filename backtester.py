@@ -61,7 +61,7 @@ class Backtester:
             else:
                 weight = 0
             print(f"{stock}: {weight:.2f}% |", end='')
-        print('')
+        print(f' - {self.bar} / {len(self.raw_data)}')
     
     def weight_of_stock(self, stock):
         total_units = sum(self.units.values())
@@ -75,19 +75,14 @@ class Backtester:
     def print_result(self, fname=''):
         self.portfolio_returns = np.array(self.portfolio_returns)
         self.portfolio_returns[np.isnan(self.portfolio_returns)] = 0.0
-        end_return = self.portfolio_returns[-1]
-        worst_return = min(self.portfolio_returns)
-        best_return = max(self.portfolio_returns)
-        mean_return = np.mean(self.portfolio_returns)
-        std_return = np.std(self.portfolio_returns)
-        sharp_ratio = mean_return / std_return
+        end_return, best_return, worst_return, sharp_ratio = utils.get_bt_result(self.portfolio_returns)
         text = ""
         text += f"======= {self.symbols[0]} and {self.symbols[1]} =======\n"
         text += f"Backtest range {self.start} ~ {self.end} : {self.interval} \n"
         text += f"Trade Count : {self.trade_count}\n"
         text += f"End Return : {end_return * 100:.2f} % \n"
         text += f"Worst ~ Best return {worst_return * 100:.2f} ~ {best_return * 100:.2f} % \n\n"
-        text += f"Sharp Ratio : {sharp_ratio}\n\n"
+        text += f"Sharp Ratio : {sharp_ratio :.4f}\n\n"
         for symbol in self.symbols:
             profits = self.protfolio_stock_profits[symbol]
             total_return = 1.0

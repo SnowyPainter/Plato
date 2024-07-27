@@ -1,5 +1,32 @@
 # Plato
 
+# Returns
+
+## Compare stocks
+**('064350.KS', '012450.KS')**
+> Without Volatility Predictor   
+sharp 1.33, max 27%  
+> *With Volatility Predictor*  
+> 1. sharp 1.45, max 26.81%, end 24.13%  
+> 2. sharp 1.40, max 26.55%, end 23.61%
+> 3. sharp 1.40, max 26.74%, end 23.64%
+
+**('012450.KS', '009540.KS')**  
+> Without Volatility Predictor  
+sharp 1.48, max 45%  
+> *With Volatility Predictor*  
+> 1. sharp 1.47, max 44.63%, end 40.69%
+> 2. sharp 1.44, max 46.78%, end 42.19%
+> 3. sharp 1.44, max 47.23%, end 42.63%
+
+**('329180.KS', '010620.KS')**  
+> Without Volatility Predictor  
+sharp 1.4, max 36%  
+> *With Volatility Predictor*  
+> 1. sharp 1.5, max 35.73%, end 30.87%  
+> 2. sharp 1.49, max 36.28%, end 31.40%
+> 3. sharp 1.49, max 36.20%, end 31.31%
+
 # Utils
 
 ## Preprocess Weights
@@ -27,15 +54,5 @@ With Technical Trend Predictor, Price Predictor affect that position.
 
 ## Volatility Forecaster
 
-Volatility Forecaster predicts volatility of stocks. To use this model, make the linear regression and get coefficient. I grant some weights to trade.
-
-So far, I cannot find environment to investment with this.
-
-> With Volatility Forecaster  
-* Backtest range 2024-06-01 ~ 2024-07-23 : 30m 
-* Trade Count : 37
-* End Return : 28.75 % 
-* Worst ~ Best return -1.44 ~ 33.52 % 
-* Sharp Ratio : 1.5076329237921464
-* 329180.KS Profit : 1.65 %
-* 010620.KS Profit : 35.16 %
+Volatility Forecaster predicts volatility of stocks. To use this model, just pass a raw price dataframe.  
+Sometime, it isn't good for some stock pairs.

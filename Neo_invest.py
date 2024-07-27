@@ -1,6 +1,5 @@
 from Alpha1.strategy import *
 from Alpha5.strategy import *
-from Alpha6.strategy import *
 
 from Models import trend_predictor, ARIMA, volatility_predictor 
 import backtester
@@ -53,7 +52,9 @@ class NeoInvest:
         self.OU = OU()
         start, end, interval = utils.today_before(50), utils.today(), '30m'
         self.raw_data = self._create_init_data(self.symbols, start, end, interval)
+        data_for_vp = self._create_init_data(self.symbols, utils.today_before(300), utils.today(), '1d')
         self.technical_trend_predictors = trend_predictor.create_trend_predictors(self.symbols, self.raw_data)
+        self.volatility_predictors = volatility_predictor.create_volatility_predictors(self.symbols, data_for_vp)
         self.orders = orders
         if not (symbol1 in orders) or not (symbol2 in orders) or (self.orders == {} and not nobacktest):
             self.orders = utils.get_saved_orders(self.symbols)
@@ -135,7 +136,7 @@ class NeoInvest:
         
         self.bar += 1
         
-    def backtest(self, start='2023-01-01', end='2024-01-01', interval='1h', print_result=True, seperated=False):
+    def backtest(self, start='2023-01-01', end='2024-01-01', interval='1h', print_result=True, seperated=False, show_plot=True, show_result=True):
         
         print(f"Backtest for {self.symbols} | {start} ~ {end} *{interval}")
         
@@ -143,7 +144,16 @@ class NeoInvest:
         bt = backtester.Backtester(self.symbols, start, end, interval, limit, 0.0025, self._process_data)
         bar = 0
         hdt = (2 if interval == '30m' else 1)
+        day_t = 6 * hdt
         window = 50 * hdt
+        volatilities = {}
+        volatility_w = {}
+            
+        for symbol in self.symbols:
+            volatilities[symbol] = []
+            volatilities[symbol].append(self.volatility_predictors[symbol].predict(bt.raw_data[0:day_t]))
+            volatility_w[symbol] = 1
+        
         while True:
             raw, data, today = bt.go_next()
             if data == -1:
@@ -159,6 +169,7 @@ class NeoInvest:
                 tech_signal[symbol] = 0
                 serial_signal[symbol] = 0
 
+                
             if bar != 0 and bar >= window:
                 price1, price2 = data["norm_price_series"][self.symbols[0]+"_Price"], data["norm_price_series"][self.symbols[1]+"_Price"]
                 price1 = price1[bar - window:bar]
@@ -169,10 +180,10 @@ class NeoInvest:
                 for s in sell_list:
                     trade_dict[s] -= alpha_ratio
             
-            if bar > 30 and bar % (hdt*2) == 0:
+            if bar > 30 and bar % hdt == 0:
                 self.arima_trend_predictors = ARIMA.create_price_predictor_BT(utils.nplog(raw)[0:bar], self.symbols, self.orders)
                 for stock, p in self.arima_trend_predictors.items():
-                    y = p.make_forecast(10)
+                    y = p.make_forecast(day_t)
                     a = utils.coef(y)
                     v = a * 300
                     serial_signal[stock] = (v if a > 0 else -v)
@@ -185,30 +196,44 @@ class NeoInvest:
                     if trend == 1:
                         not_trade.append(symbol)
             
+            if bar > 0 and bar % day_t == 0:
+                for symbol in self.symbols:
+                    volatilities[symbol].append(self.volatility_predictors[symbol].predict(raw[bar - day_t:bar]))
+                    volatility_w[symbol] = 0.9 if volatilities[symbol][-1] - volatilities[symbol][-2] > 0 else 2
+            
             for symbol in self.symbols:
                 trade_dict[symbol] += (serial_signal[symbol] + tech_signal[symbol] / 2)
             
+            def vw_apply(stock, alpha):
+                return alpha * volatility_w[stock]
+                if volatility_w[stock] > 1:
+                    if alpha <= 0.9:
+                        alpha *= volatility_w[stock]
+                else:
+                    if alpha >= 0:
+                        alpha *= volatility_w[stock]
+                return alpha
+            
             cash = bt.current_amount
-            action_dicts = [utils.preprocess_weights({k: v for k, v in trade_dict.items() if v > 0}, cash, limit), 
-                            {k: v for k, v in trade_dict.items() if v < 0}]
+            action_dicts = [utils.preprocess_weights({k: vw_apply(k, v) for k, v in trade_dict.items() if v > 0}, cash, limit), 
+                            {k: vw_apply(k, v) for k, v in trade_dict.items() if v < 0}]
             
             for stock, alpha in action_dicts[1].items(): # sell
                 if stock in not_trade:
                     continue
                 alpha_ratio = abs(alpha)
-                
                 # 하한선 - 얼마 이하가 되면 보충하여 매매
-                if alpha_ratio <= 0.08:
-                    alpha_ratio = 0.08
-
+                if alpha_ratio <= 0.05:
+                    alpha_ratio = 0.1
+                
                 bt.sell(stock, alpha_ratio)
             for stock, alpha in action_dicts[0].items(): # buy
                 if stock in not_trade:
                     continue
                 alpha_ratio = abs(alpha)
-                
+
                 # 하한선 - 얼마 이하가 되면 우선하여 매매
-                if alpha_ratio <= 0.1:
+                if alpha_ratio <= 0.05:
                     alpha_ratio = 0.1
 
                 bt.buy(stock, alpha_ratio)
@@ -217,8 +242,10 @@ class NeoInvest:
             bar += 1
         
         if print_result:
-            bt.print_result()
-            bt.plot_result() 
+            if show_result:
+                bt.print_result()
+            if show_plot:
+                bt.plot_result() 
         else:   
             if seperated:
                 return bt.print_result(fname='sum')
