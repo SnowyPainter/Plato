@@ -61,7 +61,6 @@ def get_saved_orders(symbols):
     return orders
 
 THEMES = {
-    '''
     "반도체" : {
         "HBM" : 536,
         "뉴로모픽" : 556,
@@ -70,7 +69,6 @@ THEMES = {
         "원자력 발전" : 205,
         "우크라이나 재건" : 517,
     },
-    '''
     "조선" : {
         "조선" : 30,
     },
