@@ -51,7 +51,6 @@ class NeoInvest:
         self.symbols = [symbol1, symbol2]
         self.client = kis.KISClient(self.symbols, max_operate_amount, nolog)
         self.OU = OU()
-        self.VA = VolatilityAct(self.symbols)
         start, end, interval = utils.today_before(50), utils.today(), '30m'
         self.raw_data = self._create_init_data(self.symbols, start, end, interval)
         self.technical_trend_predictors = trend_predictor.create_trend_predictors(self.symbols, self.raw_data)
@@ -145,10 +144,6 @@ class NeoInvest:
         bar = 0
         hdt = (2 if interval == '30m' else 1)
         window = 50 * hdt
-        vola_reset_period = 3
-        volatilty_bias = {}
-        for s in self.symbols:
-            volatilty_bias[s] = 0
         while True:
             raw, data, today = bt.go_next()
             if data == -1:
@@ -158,17 +153,12 @@ class NeoInvest:
             trade_dict = {}
             tech_signal = {}
             serial_signal = {}
-            volatility_risk_weight = {}
-            
-            if bar % vola_reset_period == 0:
-                volatilty_bias = self.VA.action()
-            
+
             for symbol in self.symbols:
                 trade_dict[symbol] = 0
                 tech_signal[symbol] = 0
                 serial_signal[symbol] = 0
-                volatility_risk_weight[symbol] = 1
-            
+
             if bar != 0 and bar >= window:
                 price1, price2 = data["norm_price_series"][self.symbols[0]+"_Price"], data["norm_price_series"][self.symbols[1]+"_Price"]
                 price1 = price1[bar - window:bar]
@@ -187,10 +177,6 @@ class NeoInvest:
                     v = a * 300
                     serial_signal[stock] = (v if a > 0 else -v)
 
-            if bar > vola_reset_period:
-                v = raw[symbol+"_Price"].iloc[bar-vola_reset_period-1:bar].pct_change().rolling(window=vola_reset_period).std()
-                self.VA.append_data(v)
-            
             for symbol in self.symbols:
                 hdt = 1 if interval == '1h' else 2
                 if bar > self.technical_trend_predictors[symbol].minimal_data_length and (bar - self.technical_trend_predictors[symbol].minimal_data_length) % hdt == 0:
@@ -212,11 +198,9 @@ class NeoInvest:
                 alpha_ratio = abs(alpha)
                 
                 # 하한선 - 얼마 이하가 되면 보충하여 매매
-                if alpha_ratio <= 0.03:
+                if alpha_ratio <= 0.08:
                     alpha_ratio = 0.08
-                if alpha_ratio >= 0.2:
-                    alpha_ratio += volatilty_bias[stock]
-                
+
                 bt.sell(stock, alpha_ratio)
             for stock, alpha in action_dicts[0].items(): # buy
                 if stock in not_trade:
@@ -224,11 +208,9 @@ class NeoInvest:
                 alpha_ratio = abs(alpha)
                 
                 # 하한선 - 얼마 이하가 되면 우선하여 매매
-                if alpha_ratio <= 0.05:
+                if alpha_ratio <= 0.1:
                     alpha_ratio = 0.1
-                if alpha_ratio < 0.1:
-                    alpha_ratio += volatilty_bias[stock]
-                
+
                 bt.buy(stock, alpha_ratio)
 
             #bt.print_stock_weights()
