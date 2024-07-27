@@ -4,6 +4,7 @@ from statsmodels.tsa.arima.model import ARIMA
 from sklearn.metrics import mean_squared_error
 from itertools import product
 from pmdarima import auto_arima
+import os
 
 import warnings
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
@@ -60,7 +61,7 @@ class PricePredictorBT:
 
         self.best_order = best_order
         self.order = best_order
-        print(f'Best order: {best_order}, RMSE: {best_rmse}')
+        print(f'{price_column} Best order: {best_order}, RMSE: {best_rmse}')
         return best_order
 
 class PricePredictor:
@@ -107,9 +108,12 @@ def create_price_predictor_BT(df, symbols, orders={}, freq='1h'):
         pp = PricePredictorBT(df)
         pp.preprocess_data(symbols, freq=("30min" if freq == '30m' else "H"))
         if not (symbol in orders):
-            order = pp.find_best_order(symbol+"_Price")
-            with open(f'./model_params/{symbol} ARIMA order.txt', 'w') as file:
-                file.write(str(order))
+            if os.path.exists(f'./model_params/{symbol} ARIMA order.txt'):
+                order = utils.get_order(f'./model_params/{symbol} ARIMA order.txt')
+            else:
+                order = pp.find_best_order(symbol+"_Price")
+                with open(f'./model_params/{symbol} ARIMA order.txt', 'w') as file:
+                    file.write(str(order))
         else:
             order = orders[symbol]
             

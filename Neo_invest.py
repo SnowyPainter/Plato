@@ -242,7 +242,7 @@ class NeoInvest:
 
                 bt.buy(stock, alpha_ratio)
 
-            #bt.print_stock_weights()
+            bt.print_stock_weights()
             bar += 1
         
         if print_result:

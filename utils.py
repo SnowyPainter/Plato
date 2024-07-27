@@ -32,22 +32,36 @@ def create_params_dir():
     if not os.path.isdir('./model_params'):
         os.makedirs('./model_params')
 
+def get_order(filename):
+    with open(filename, 'r') as file:
+        content = file.read().strip()
+        match = re.match(r'\((\d+), (\d+), (\d+)\)', content)
+        if match:
+            p, d, q = map(int, match.groups())
+            return (p, d, q)
+        else:
+            print(f"파일 {filename}의 내용이 예상된 형식이 아닙니다.")
+            return (3, 1, 3)
+
 def get_saved_orders(symbols):
     orders = {}
     for filename in os.listdir('./model_params'):
         for symbol in symbols:
             if filename == f"{symbol} ARIMA order.txt":
-                with open(os.path.join('./model_params', filename), 'r') as file:
-                    content = file.read().strip()
-                    match = re.match(r'\((\d+), (\d+), (\d+)\)', content)
-                    if match:
-                        p, d, q = map(int, match.groups())
-                        orders[symbol] = (p, d, q)
-                    else:
-                        print(f"파일 {filename}의 내용이 예상된 형식이 아닙니다.")
+                fname = os.path.join('./model_params', filename)
+                orders[symbol] = get_order(fname)
+    
+    #완전성 검사
+    flag = False
+    for symbol in symbols:
+        if not (symbol in orders):
+            flag = True
+    if flag:
+        return {}
     return orders
 
 THEMES = {
+    '''
     "반도체" : {
         "HBM" : 536,
         "뉴로모픽" : 556,
@@ -56,6 +70,7 @@ THEMES = {
         "원자력 발전" : 205,
         "우크라이나 재건" : 517,
     },
+    '''
     "조선" : {
         "조선" : 30,
     },
