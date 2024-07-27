@@ -81,7 +81,9 @@ class Backtester:
         mean_return = np.mean(self.portfolio_returns)
         std_return = np.std(self.portfolio_returns)
         sharp_ratio = mean_return / std_return
-        text = f"Backtest range {self.start} ~ {self.end} : {self.interval} \n"
+        text = ""
+        text += f"======= {self.symbols[0]} and {self.symbols[1]} =======\n"
+        text += f"Backtest range {self.start} ~ {self.end} : {self.interval} \n"
         text += f"Trade Count : {self.trade_count}\n"
         text += f"End Return : {end_return * 100:.2f} % \n"
         text += f"Worst ~ Best return {worst_return * 100:.2f} ~ {best_return * 100:.2f} % \n\n"
@@ -104,6 +106,8 @@ class Backtester:
                 'best' : best_return,
                 'trades' : self.trade_count
             }
+        elif fname == 'sum':
+            return self.portfolio_returns
         else:
             with open(fname, 'w') as f:
                 f.write(text)

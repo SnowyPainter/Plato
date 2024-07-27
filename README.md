@@ -1,5 +1,12 @@
 # Plato
 
+# Utils
+
+## Preprocess Weights
+
+To prevent the sum of the weights (ratios) from exceeding 1, first divide by the sum of the weights. The weights are then divided by the ratio of the purchaseable amount to the maximum manageable amount to determine the ratio to the manageable assets.
+However, weights that are too small can become noise and may be ignored. Through this, the Sharpe ratio increased by about 0.1 and the rate of return increased by about 0%p to 3%p.
+
 # Model
 
 ## Technical Trend Predictor

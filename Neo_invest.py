@@ -1,7 +1,8 @@
 from Alpha1.strategy import *
 from Alpha5.strategy import *
+from Alpha6.strategy import *
 
-from Models import trend_predictor, ARIMA, GJRGARCH 
+from Models import trend_predictor, ARIMA, volatility_predictor 
 import backtester
 import utils
 from Investment import kis
@@ -50,10 +51,10 @@ class NeoInvest:
         self.symbols = [symbol1, symbol2]
         self.client = kis.KISClient(self.symbols, max_operate_amount, nolog)
         self.OU = OU()
-        self.MABT = MABreakThrough()
-        start, end, interval = utils.today_before(120), utils.today(), '1h'
+        self.VA = VolatilityAct(self.symbols)
+        start, end, interval = utils.today_before(50), utils.today(), '30m'
         self.raw_data = self._create_init_data(self.symbols, start, end, interval)
-        self.technical_trend_predictors = trend_predictor.create_trend_predictors(self.symbols, start, end, interval)
+        self.technical_trend_predictors = trend_predictor.create_trend_predictors(self.symbols, self.raw_data)
         self.orders = orders
         if not (symbol1 in orders) or not (symbol2 in orders) or (self.orders == {} and not nobacktest):
             self.orders = utils.get_saved_orders(self.symbols)
@@ -135,7 +136,7 @@ class NeoInvest:
         
         self.bar += 1
         
-    def backtest(self, start='2023-01-01', end='2024-01-01', interval='1h', print_result=True):
+    def backtest(self, start='2023-01-01', end='2024-01-01', interval='1h', print_result=True, seperated=False):
         
         print(f"Backtest for {self.symbols} | {start} ~ {end} *{interval}")
         
@@ -144,6 +145,10 @@ class NeoInvest:
         bar = 0
         hdt = (2 if interval == '30m' else 1)
         window = 50 * hdt
+        vola_reset_period = 3
+        volatilty_bias = {}
+        for s in self.symbols:
+            volatilty_bias[s] = 0
         while True:
             raw, data, today = bt.go_next()
             if data == -1:
@@ -154,6 +159,9 @@ class NeoInvest:
             tech_signal = {}
             serial_signal = {}
             volatility_risk_weight = {}
+            
+            if bar % vola_reset_period == 0:
+                volatilty_bias = self.VA.action()
             
             for symbol in self.symbols:
                 trade_dict[symbol] = 0
@@ -179,14 +187,10 @@ class NeoInvest:
                     v = a * 300
                     serial_signal[stock] = (v if a > 0 else -v)
 
-            '''
-            if bar > 50 and bar % (hdt*2) == 0:
-                vfs = GJRGARCH.create_vfs(self.symbols, raw[bar-50:bar])
-                for stock, vf in vfs.items():
-                    a = utils.coef(vf.make_forecast(30))
-                    volatility_risk_weight[stock] = 0.8 if a > 0 else 1.3
-            '''
-                     
+            if bar > vola_reset_period:
+                v = raw[symbol+"_Price"].iloc[bar-vola_reset_period-1:bar].pct_change().rolling(window=vola_reset_period).std()
+                self.VA.append_data(v)
+            
             for symbol in self.symbols:
                 hdt = 1 if interval == '1h' else 2
                 if bar > self.technical_trend_predictors[symbol].minimal_data_length and (bar - self.technical_trend_predictors[symbol].minimal_data_length) % hdt == 0:
@@ -199,7 +203,8 @@ class NeoInvest:
                 trade_dict[symbol] += (serial_signal[symbol] + tech_signal[symbol] / 2)
             
             cash = bt.current_amount
-            action_dicts = [utils.preprocess_weights({k: v for k, v in trade_dict.items() if v > 0}, cash, limit), {k: v for k, v in trade_dict.items() if v < 0}]
+            action_dicts = [utils.preprocess_weights({k: v for k, v in trade_dict.items() if v > 0}, cash, limit), 
+                            {k: v for k, v in trade_dict.items() if v < 0}]
             
             for stock, alpha in action_dicts[1].items(): # sell
                 if stock in not_trade:
@@ -209,6 +214,8 @@ class NeoInvest:
                 # 하한선 - 얼마 이하가 되면 보충하여 매매
                 if alpha_ratio <= 0.03:
                     alpha_ratio = 0.08
+                if alpha_ratio >= 0.2:
+                    alpha_ratio += volatilty_bias[stock]
                 
                 bt.sell(stock, alpha_ratio)
             for stock, alpha in action_dicts[0].items(): # buy
@@ -219,6 +226,9 @@ class NeoInvest:
                 # 하한선 - 얼마 이하가 되면 우선하여 매매
                 if alpha_ratio <= 0.05:
                     alpha_ratio = 0.1
+                if alpha_ratio < 0.1:
+                    alpha_ratio += volatilty_bias[stock]
+                
                 bt.buy(stock, alpha_ratio)
 
             #bt.print_stock_weights()
@@ -228,5 +238,7 @@ class NeoInvest:
             bt.print_result()
             bt.plot_result() 
         else:   
+            if seperated:
+                return bt.print_result(fname='sum')
             return bt.print_result(fname='return')
         

@@ -18,6 +18,7 @@ class TrendPredictor:
 
     def _load_train_data(self, df, symbol):
         price_column = symbol+"_Price"
+        self.price_column = price_column
         df = utils.normalize(df)
         df[price_column+"_Lag"] = utils.df_lags(df, price_column, 5)
         df[price_column+"_MACD"] = utils.df_MACD(df, price_column)
@@ -35,8 +36,7 @@ class TrendPredictor:
         model = MLPClassifier(hidden_layer_sizes=(64, 32), activation='logistic', solver='adam', max_iter=1000, random_state=42)
         return model
     
-    def __init__(self, symbol, start, end, interval):
-        df = utils.load_historical_data(symbol, start, end, interval)
+    def __init__(self, symbol, df):
         self.x, self.y = self._load_train_data(df, symbol)
         self.model = self._build_model()
         
@@ -52,7 +52,7 @@ class TrendPredictor:
 
         train_accuracy = accuracy_score(y_train, y_train_pred)
         test_accuracy = accuracy_score(y_test, y_test_pred)
-        print(train_accuracy, test_accuracy)
+        print(f"Trend Predictor {self.price_column} - Train ACC : {train_accuracy :.2f} | Test ACC : {test_accuracy :.2f}")
         return train_accuracy, test_accuracy
     
     def predict(self, raw_df, symbol):
@@ -60,10 +60,10 @@ class TrendPredictor:
         df = np.array([x.iloc[-1]])
         return self.model.predict(df)
     
-def create_trend_predictors(symbols, start, end, interval):
+def create_trend_predictors(symbols, df):
     trend_predictors = {}
     for symbol in symbols:
-        tp = TrendPredictor(symbol, start, end, interval)
+        tp = TrendPredictor(symbol, df)
         train_acc, test_acc = tp.fit()
         if test_acc >= 0.55:
             trend_predictors[symbol] = tp
