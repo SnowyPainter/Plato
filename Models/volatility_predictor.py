@@ -11,7 +11,7 @@ class VolatilityPredictor:
     def _preprocess_data(self):
         price = self.raw[self.price_column]
         return_pct = price.pct_change()
-        self.data = pd.DataFrame({'Price' : utils.nplog(price), 'Volatility' : return_pct.rolling(window=80).std(), 'Return' : return_pct})
+        self.data = pd.DataFrame({'Price' : utils.nplog(price), 'Volatility' : return_pct.rolling(window=12).std(), 'Return' : return_pct})
         self.data.dropna(inplace=True)
         self.X = self.data[['Price', 'Return']].values
         self.Y = self.data[['Volatility']].values

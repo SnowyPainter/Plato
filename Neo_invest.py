@@ -45,7 +45,10 @@ class NeoInvest:
         raw_data.dropna(inplace=True)
         
         return raw_data
-
+    
+    def _vw_apply(self, stock, alpha):
+        return alpha * self.volatility_w[stock]
+    
     def __init__(self, symbol1, symbol2, max_operate_amount, orders={}, nobacktest=False, nolog=False):
         self.symbols = [symbol1, symbol2]
         self.client = kis.KISClient(self.symbols, max_operate_amount, nolog)
@@ -55,6 +58,13 @@ class NeoInvest:
         data_for_vp = self._create_init_data(self.symbols, utils.today_before(300), utils.today(), '1d')
         self.technical_trend_predictors = trend_predictor.create_trend_predictors(self.symbols, self.raw_data)
         self.volatility_predictors = volatility_predictor.create_volatility_predictors(self.symbols, data_for_vp)
+        self.volatilities = {}
+        self.volatility_w = {}
+        for symbol in self.symbols:
+            self.volatilities[symbol] = []
+            self.volatilities[symbol].append(self.volatility_predictors[symbol].predict(self.raw_data.tail(12)))
+            self.volatility_w[symbol] = 1
+        
         self.orders = orders
         if not (symbol1 in orders) or not (symbol2 in orders) or (self.orders == {} and not nobacktest):
             self.orders = utils.get_saved_orders(self.symbols)
@@ -74,7 +84,6 @@ class NeoInvest:
         log = utils.nplog(self.raw_data)
         price1 = log[self.symbols[0]+"_Price"].tail(window)
         price2 = log[self.symbols[1]+"_Price"].tail(window)
-        
         not_trade = []
         trade_dict = {}
         tech_signal = {}
@@ -114,21 +123,26 @@ class NeoInvest:
                 serial_signal[stock] = (v if coefficients[0] > 0 else -v)
                 text += f"[ARIMA] {stock} goes {('Up' if coefficients[0] > 0 else 'Down')} | W:{(v if coefficients[0] > 0 else -v)} \n"
         
+        if self.bar > 0 and self.bar % (hour_divided_time * 6) == 0:
+            for symbol in self.symbols:
+                self.volatilities[symbol].append(self.volatility_predictors[symbol].predict(self.raw_data.tail(hour_divided_time*6)))
+                self.volatility_w[symbol] = 0.9 if self.volatilities[symbol][-1] - self.volatilities[symbol][-2] > 0 else 2
         for symbol in self.symbols:
             trade_dict[symbol] += (serial_signal[symbol] + tech_signal[symbol]) / 2
 
         cash, limit = self.client.max_operate_cash(), self.client.max_operate_amount
-        action_dicts = [utils.preprocess_weights({k: v for k, v in trade_dict.items() if v > 0}, cash, limit), {k: v for k, v in trade_dict.items() if v < 0}]
+        action_dicts = [utils.preprocess_weights({k: self._vw_apply(k, v) for k, v in trade_dict.items() if v > 0}, cash, limit), 
+                        {k: self._vw_apply(k, v) for k, v in trade_dict.items() if v < 0}]
         for stock, alpha in action_dicts[1].items(): # sell
             if stock in not_trade:
                 continue
-            alpha_ratio = abs(alpha)
+            alpha_ratio = min(abs(alpha), 1)
             print("Sell ", stock, alpha_ratio)
             self.client.sell(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
         for stock, alpha in action_dicts[0].items(): # buy
             if stock in not_trade:
                 continue
-            alpha_ratio = abs(alpha)
+            alpha_ratio = min(abs(alpha), 1)
             print("Buy ", stock, alpha_ratio)
             self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
         
@@ -204,19 +218,9 @@ class NeoInvest:
             for symbol in self.symbols:
                 trade_dict[symbol] += (serial_signal[symbol] + tech_signal[symbol] / 2)
             
-            def vw_apply(stock, alpha):
-                return alpha * volatility_w[stock]
-                if volatility_w[stock] > 1:
-                    if alpha <= 0.9:
-                        alpha *= volatility_w[stock]
-                else:
-                    if alpha >= 0:
-                        alpha *= volatility_w[stock]
-                return alpha
-            
             cash = bt.current_amount
-            action_dicts = [utils.preprocess_weights({k: vw_apply(k, v) for k, v in trade_dict.items() if v > 0}, cash, limit), 
-                            {k: vw_apply(k, v) for k, v in trade_dict.items() if v < 0}]
+            action_dicts = [utils.preprocess_weights({k: self._vw_apply(k, v) for k, v in trade_dict.items() if v > 0}, cash, limit), 
+                            {k: self._vw_apply(k, v) for k, v in trade_dict.items() if v < 0}]
             
             for stock, alpha in action_dicts[1].items(): # sell
                 if stock in not_trade:

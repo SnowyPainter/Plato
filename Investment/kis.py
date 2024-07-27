@@ -58,13 +58,14 @@ class KISClient:
     def _max_units_could_affordable(self, ratio, init_amount, current_amount, price, fee):
         money = init_amount * ratio * (1+fee)
         qty = math.floor(money / price)
-        
         bought_asset = self._asset_bought_amount()
         if bought_asset > self.max_operate_amount:
             qty = 0
         if bought_asset + (qty * price) > self.max_operate_amount:
             qty = math.floor(((self.max_operate_amount - bought_asset) * (1 + fee)) / price)
-        
+        else:
+            qty_by_curr_amount = math.floor((current_amount * (1 + fee) / price))
+            qty = qty if qty_by_curr_amount > qty else qty_by_curr_amount
         return qty
 
     def _max_units_could_sell(self, ratio, init_amount, current_units, price, fee):
