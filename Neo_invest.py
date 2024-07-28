@@ -49,7 +49,7 @@ class NeoInvest:
     def _vw_apply(self, stock, alpha):
         return alpha * self.volatility_w[stock]
     
-    def __init__(self, symbol1, symbol2, max_operate_amount, orders={}, nobacktest=False, nolog=False):
+    def __init__(self, symbol1, symbol2, max_operate_amount, orders={}, nobacktest=False, nolog=False, only_backtest=False):
         self.symbols = [symbol1, symbol2]
         self.client = kis.KISClient(self.symbols, max_operate_amount, nolog)
         self.OU = OU()
@@ -57,7 +57,8 @@ class NeoInvest:
         self.raw_data = self._create_init_data(self.symbols, start, end, interval)
         data_for_vp = self._create_init_data(self.symbols, utils.today_before(300), utils.today(), '1d')
         self.technical_trend_predictors = trend_predictor.create_trend_predictors(self.symbols, self.raw_data)
-        self.arima_trend_predictors = ARIMA.create_price_predictor(utils.nplog(self.raw_data).tail(30), self.symbols)
+        if not only_backtest:
+            self.arima_trend_predictors = ARIMA.create_price_predictor(utils.nplog(self.raw_data).tail(30), self.symbols)
         self.volatility_predictors = volatility_predictor.create_volatility_predictors(self.symbols, data_for_vp)
         self.volatilities = {}
         self.volatility_w = {}

@@ -59,7 +59,7 @@ def save_results(results, fname):
 
 def run_backtest(pair, start, end, results):
     name = pair[0] + " " + pair[1]
-    neo = Neo_invest.NeoInvest(pair[0], pair[1], 1000000000, nolog=True)
+    neo = Neo_invest.NeoInvest(pair[0], pair[1], 1000000000, nolog=True, only_backtest=True)
     result = neo.backtest(start, end, print_result=False)
     results[name] = result
 

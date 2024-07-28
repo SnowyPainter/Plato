@@ -25,7 +25,6 @@ class InvestThread(QThread):
 
     def run(self):
         def action():
-            text = ''
             self.invester.append_current_data()
             text = self.invester.action(hour_divided_time=1 if self.interval == '1h' else 2)
             self.invest_logs.append(text)
@@ -33,24 +32,27 @@ class InvestThread(QThread):
 
         start_time = datetime.strptime("09:00", "%H:%M").time()
         end_time = datetime.strptime("15:30", "%H:%M").time()
-        interval_minutes = 30
+        interval_minutes = [0, 29]
         if self.interval == '1h':
-            interval_minutes = 60
+            interval_minutes = [0]
         elif self.interval == '30m':
-            interval_minutes = 30
+            interval_minutes = [0, 29]
         
         now = datetime.now()
-        next_run = now
         if now > datetime.combine(now.date(), end_time):
-            next_run += timedelta(days=1)
+            start_time = (datetime.combine(now, start_time) + timedelta(days=1)).time()
+
         while self._is_running:
             now = datetime.now()
-            if now >= next_run:
-                if now.time() >= end_time:
-                    self.update_signal.emit(f"$END$&{self.process_name}")
-                    break
-                action()
-                next_run += timedelta(minutes=interval_minutes)
+            
+            if start_time <= now.time() <= end_time:
+                if now.minute in interval_minutes and now.second == 1:
+                    action()
+                    time.sleep(60) # 1분 대기 (1분 내에 다시 실행되지 않도록)
+            elif now.time() > end_time:
+                self.update_signal.emit(f"$END$&{self.process_name}")
+                break
+
             time.sleep(1)
         
     def stop(self):
@@ -214,7 +216,7 @@ class TradingApp(QMainWindow):
         if start == '' or end == '':
             return
         
-        invester = Neo_invest.NeoInvest(symbols[0], symbols[1], 10000000000)
+        invester = Neo_invest.NeoInvest(symbols[0], symbols[1], 10000000000, nolog=True, only_backtest=True)
         result = invester.backtest(start, end, show_only_text=True)
         self.bt_result_texts.append(result)
         self.bt_result_list.addItem(f"{symbols} | {start} ~ {end}")
