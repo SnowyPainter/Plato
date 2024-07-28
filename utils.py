@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 import pytz
 import os, re
 
+from Models import MC_VaR
+
 def merge_dfs(dfs):
     merged = dfs[0]
     for i in range(1, len(dfs)):
@@ -143,14 +145,15 @@ def normalize(df):
     range_val[range_val == 0] = 1
     return (df - df.min()) / (range_val)
 
-def get_bt_result(portfolio_returns):
+def get_bt_result(portfolio_returns, init_amount):
+    VaR = MC_VaR.get_historical_VaR2(portfolio_returns, init_amount, 1)
     end_return = portfolio_returns[-1]
     worst_return = min(portfolio_returns)
     best_return = max(portfolio_returns)
     mean_return = np.mean(portfolio_returns)
     std_return = np.std(portfolio_returns)
     sharp_ratio = mean_return / std_return
-    return end_return, best_return, worst_return, sharp_ratio
+    return end_return, best_return, worst_return, sharp_ratio, VaR
 
 def series_winsorize(series, limits=(0.05, 0.05)):
     return winsorize(series, limits=limits)

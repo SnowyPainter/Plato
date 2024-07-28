@@ -43,6 +43,7 @@ def save_results(results, fname):
     best_max_key = max(results, key=lambda k: results[k]['best'])
     worst_min_key = min(results, key=lambda k: results[k]['worst'])
     end_max_key = max(results, key=lambda k: results[k]['end'])
+    lowest_VaR_key = min(results, key=lambda k: results[k]['VaR'])
     
     text = f"Best Sharp : {sharp_max_key} \n"
     text += json.dumps(results[sharp_max_key], sort_keys=True, indent=4) + "\n"
@@ -52,6 +53,8 @@ def save_results(results, fname):
     text += json.dumps(results[end_max_key], sort_keys=True, indent=4) + "\n"
     text += f"Worst Return : {worst_min_key} \n"
     text += json.dumps(results[worst_min_key], sort_keys=True, indent=4) + "\n"
+    text += f"Lowest VaR : {lowest_VaR_key} \n"
+    text += json.dumps(results[lowest_VaR_key], sort_keys=True, indent=4) + "\n"
     
     with open(f"{fname}.txt", 'w') as f:
         f.write(text)

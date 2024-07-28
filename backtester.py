@@ -75,14 +75,17 @@ class Backtester:
     def print_result(self, fname=''):
         self.portfolio_returns = np.array(self.portfolio_returns)
         self.portfolio_returns[np.isnan(self.portfolio_returns)] = 0.0
-        end_return, best_return, worst_return, sharp_ratio = utils.get_bt_result(self.portfolio_returns)
+        self.portfolio_returns = self.portfolio_returns[self.portfolio_returns != 0]
+        end_return, best_return, worst_return, sharp_ratio, VaR = utils.get_bt_result(self.portfolio_returns, self.init_amount)
         text = ""
         text += f"======= {self.symbols[0]} and {self.symbols[1]} =======\n"
         text += f"Backtest range {self.start} ~ {self.end} : {self.interval} \n"
         text += f"Trade Count : {self.trade_count}\n"
         text += f"End Return : {end_return * 100:.2f} % \n"
         text += f"Worst ~ Best return {worst_return * 100:.2f} ~ {best_return * 100:.2f} % \n\n"
-        text += f"Sharp Ratio : {sharp_ratio :.4f}\n\n"
+        text += f"Sharp Ratio : {sharp_ratio :.4f}\n"
+        text += f"VaR(30 days) : {VaR} / {self.init_amount}\n\n"
+        
         for symbol in self.symbols:
             profits = self.protfolio_stock_profits[symbol]
             total_return = 1.0
@@ -99,7 +102,8 @@ class Backtester:
                 'end' : end_return,
                 'worst' : worst_return,
                 'best' : best_return,
-                'trades' : self.trade_count
+                'trades' : self.trade_count,
+                'VaR' : VaR
             }
         elif fname == 'sum':
             return self.portfolio_returns
