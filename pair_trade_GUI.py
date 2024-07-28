@@ -49,9 +49,10 @@ class InvestThread(QThread):
                 if now.minute in interval_minutes and now.second == 1:
                     action()
                     time.sleep(60) # 1분 대기 (1분 내에 다시 실행되지 않도록)
-            elif now.time() > end_time:
-                self.update_signal.emit(f"$END$&{self.process_name}")
-                break
+                elif now.time() > end_time:
+                    print(f"Trade Done {self.process_name}")
+                    self.update_signal.emit(f"$END$&{self.process_name}")
+                    break
 
             time.sleep(1)
         
