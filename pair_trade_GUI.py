@@ -44,7 +44,6 @@ class InvestThread(QThread):
 
         while self._is_running:
             now = datetime.now()
-            
             if start_time <= now.time() <= end_time:
                 if now.minute in interval_minutes and now.second == 1:
                     action()

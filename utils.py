@@ -145,8 +145,8 @@ def normalize(df):
     range_val[range_val == 0] = 1
     return (df - df.min()) / (range_val)
 
-def get_bt_result(portfolio_returns, init_amount):
-    VaR = MC_VaR.get_historical_VaR2(portfolio_returns, init_amount, 1)
+def get_bt_result(portfolio_returns, evlus, init_amount):
+    VaR = MC_VaR.get_historical_VaR2(evlus, init_amount, 30)
     end_return = portfolio_returns[-1]
     worst_return = min(portfolio_returns)
     best_return = max(portfolio_returns)
