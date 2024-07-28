@@ -13,7 +13,6 @@ i = input("Continue to Check Connection?(yes/no) : ")
 if i == 'yes':
     connect_tester.check_connection()
 
-
 def get_symbols(option):
     print(f"{option} 선택됨. 심볼 2개를 입력하세요:")
     symbols = []

@@ -57,6 +57,7 @@ class NeoInvest:
         self.raw_data = self._create_init_data(self.symbols, start, end, interval)
         data_for_vp = self._create_init_data(self.symbols, utils.today_before(300), utils.today(), '1d')
         self.technical_trend_predictors = trend_predictor.create_trend_predictors(self.symbols, self.raw_data)
+        self.arima_trend_predictors = ARIMA.create_price_predictor(utils.nplog(self.raw_data).tail(30), self.symbols)
         self.volatility_predictors = volatility_predictor.create_volatility_predictors(self.symbols, data_for_vp)
         self.volatilities = {}
         self.volatility_w = {}
@@ -114,7 +115,6 @@ class NeoInvest:
                 if trend == 1:
                     not_trade.append(symbol)
         if self.bar % (hour_divided_time * 2) == 0:
-            self.arima_trend_predictors = ARIMA.create_price_predictor(utils.nplog(self.raw_data).tail(50), self.symbols)
             for stock, p in self.arima_trend_predictors.items():
                 y = p.make_forecast(10)
                 x = np.arange(len(y))
@@ -146,11 +146,11 @@ class NeoInvest:
             print("Buy ", stock, alpha_ratio)
             self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
         
-        print(text)
-        
         self.bar += 1
+        print(text)
+        return text
         
-    def backtest(self, start='2023-01-01', end='2024-01-01', interval='1h', print_result=True, seperated=False, show_plot=True, show_result=True):
+    def backtest(self, start='2023-01-01', end='2024-01-01', interval='1h', print_result=True, seperated=False, show_plot=True, show_result=True, show_only_text=False):
         
         print(f"Backtest for {self.symbols} | {start} ~ {end} *{interval}")
         
@@ -245,13 +245,16 @@ class NeoInvest:
             bt.print_stock_weights()
             bar += 1
         
-        if print_result:
-            if show_result:
-                bt.print_result()
-            if show_plot:
-                bt.plot_result() 
-        else:   
-            if seperated:
-                return bt.print_result(fname='sum')
-            return bt.print_result(fname='return')
+        if show_only_text:
+            return bt.print_result('for_show')
+        else:
+            if print_result:
+                if show_result:
+                    bt.print_result()
+                if show_plot:
+                    bt.plot_result() 
+            else:   
+                if seperated:
+                    return bt.print_result(fname='sum')
+                return bt.print_result(fname='return')
         

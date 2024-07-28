@@ -103,6 +103,8 @@ class Backtester:
             }
         elif fname == 'sum':
             return self.portfolio_returns
+        elif fname == 'for_show':
+            return text
         else:
             with open(fname, 'w') as f:
                 f.write(text)
