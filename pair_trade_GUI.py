@@ -2,16 +2,17 @@ import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QLabel, QComboBox, QLineEdit, QMessageBox, QInputDialog, QListWidget, QListWidgetItem
 from PyQt5.QtCore import QThread, QTimer, pyqtSlot, pyqtSignal
 import time
-import schedule
+from datetime import datetime, timedelta
 import multiprocessing as mp
-from datetime import datetime
+import os
+import configparser
 
 import Neo_invest
 import corr_high_finder
 import utils
 import connect_tester
 
-class WorkerThread(QThread):
+class InvestThread(QThread):
     update_signal = pyqtSignal(str)
 
     def __init__(self, interval, process_name, invester, invest_logs):
@@ -19,7 +20,6 @@ class WorkerThread(QThread):
         self.interval = interval
         self.process_name = process_name
         self.invester = invester
-        self.scheduled_jobs = []
         self.invest_logs = invest_logs
         self._is_running = True
 
@@ -31,29 +31,29 @@ class WorkerThread(QThread):
             self.invest_logs.append(text)
             self.update_signal.emit(f"{self.invester.symbols} {datetime.now()}")
 
+        start_time = datetime.strptime("09:00", "%H:%M").time()
+        end_time = datetime.strptime("15:30", "%H:%M").time()
+        interval_minutes = 30
         if self.interval == '1h':
-            for hour in range(9, 16):
-                job = schedule.every().day.at(f"{hour:02d}:01").do(action)
-                self.scheduled_jobs.append(job)
+            interval_minutes = 60
         elif self.interval == '30m':
-            
-            #job = schedule.every(10).seconds.do(action)
-            #self.scheduled_jobs.append(job)
-            
-            for hour in range(9, 16):
-                job1 = schedule.every().day.at(f"{hour:02d}:18").do(action)
-                job2 = schedule.every().day.at(f"{hour:02d}:29").do(action)
-                self.scheduled_jobs.append(job1)
-                self.scheduled_jobs.append(job2)
-                
+            interval_minutes = 30
+        
+        now = datetime.now()
+        next_run = now
+        if now > datetime.combine(now.date(), end_time):
+            next_run += timedelta(days=1)
         while self._is_running:
-            schedule.run_pending()
+            now = datetime.now()
+            if now >= next_run:
+                if now.time() >= end_time:
+                    self.update_signal.emit(f"$END$&{self.process_name}")
+                    break
+                action()
+                next_run += timedelta(minutes=interval_minutes)
             time.sleep(1)
         
     def stop(self):
-        for job in self.scheduled_jobs:
-            schedule.cancel_job(job)
-        del self.scheduled_jobs
         self._is_running = False
 
 class TradingApp(QMainWindow):
@@ -69,6 +69,7 @@ class TradingApp(QMainWindow):
         self.body = QHBoxLayout()
         self.act_layout = QVBoxLayout()
         self.etc_layout = QVBoxLayout()
+        self.opt_layout = QHBoxLayout()
         self.text_layout = QHBoxLayout()
         self.bt_layout = QVBoxLayout()
         self.invest_layout = QVBoxLayout()
@@ -95,7 +96,11 @@ class TradingApp(QMainWindow):
         
         self.refresh_token_btn = QPushButton("Refresh Token")
         self.refresh_token_btn.clicked.connect(self.refresh_token)
-        self.etc_layout.addWidget(self.refresh_token_btn)
+        self.set_api_btn = QPushButton("Set API")
+        self.set_api_btn.clicked.connect(self.set_api)
+        
+        self.opt_layout.addWidget(self.refresh_token_btn, stretch=3)
+        self.opt_layout.addWidget(self.set_api_btn, stretch=1)
         
         self.bt_result_texts = []
         self.bt_result_list = QListWidget(self)
@@ -107,7 +112,8 @@ class TradingApp(QMainWindow):
         self.invest_log_list.itemClicked.connect(self.show_invest_log)
         self.invest_layout.addWidget(self.invest_log_list)
         
-        self.etc_layout.addLayout(self.text_layout)
+        self.etc_layout.addLayout(self.opt_layout, stretch=1)
+        self.etc_layout.addLayout(self.text_layout, stretch=5)
         self.text_layout.addLayout(self.bt_layout, stretch=1)
         self.text_layout.addLayout(self.invest_layout, stretch=1)
         
@@ -129,6 +135,28 @@ class TradingApp(QMainWindow):
         t = self.bt_result_texts[index]
         QMessageBox.information(self, 'Backtest Result', t)
 
+    def set_api(self):
+        key, ok = QInputDialog.getText(self, "Input", f"API Key: ")
+        if not ok:
+            return
+        secret, ok = QInputDialog.getText(self, "Input", f"API Secret: ")
+        if not ok:
+            return
+        accno, ok = QInputDialog.getText(self, "Input", f"Account No.: ")
+        if not ok:
+            return
+        
+        config = configparser.ConfigParser()
+        config['API'] = {
+            'KEY': key,
+            'SECRET': secret,
+            'ACCNO': accno
+        }
+        if not os.path.exists('./settings'):
+            os.mkdir('./settings')
+        with open('./settings/keys.ini', 'w') as configfile:
+            config.write(configfile)
+        
     def refresh_token(self):
         connect_tester.check_connection()
     
@@ -143,6 +171,7 @@ class TradingApp(QMainWindow):
             self.recommend_stocks()
         else:
             QMessageBox.warning(self, "Warning", "Not Available Option.")
+    
     def get_symbols(self, option):
         symbols_input, ok = QInputDialog.getText(self, "Input", f"{option} - seperate symbols by ',' :")
         if ok and symbols_input:
@@ -157,11 +186,24 @@ class TradingApp(QMainWindow):
 
     def get_bt_term(self, option):
         start, ok = QInputDialog.getText(self, "Input", f"{option} - Start(2023-xx-xx):")
+        if not ok:
+            return '', ''
+        
         end, ok = QInputDialog.getText(self, "Input", f"{option} - End(2024-xx-xx):")
-        return start, end
+        if not ok:
+            return '', ''
+        
+        if utils.start_end_date_valid(start, end) and utils.is_valid_date_format(start) and utils.is_valid_date_format(end):
+            return start, end
+        
+        return '', ''
 
     def get_amounts(self, option):
         max_operate_amount, ok = QInputDialog.getDouble(self, "Input", f"{option} - Max Operatable Amount:")
+        
+        if max_operate_amount <= 0 or not ok:
+            return 0
+        
         return max_operate_amount
     
     def backtest(self):
@@ -169,6 +211,9 @@ class TradingApp(QMainWindow):
         if len(symbols) == 0:
             return
         start, end = self.get_bt_term("Backtest")
+        if start == '' or end == '':
+            return
+        
         invester = Neo_invest.NeoInvest(symbols[0], symbols[1], 10000000000)
         result = invester.backtest(start, end, show_only_text=True)
         self.bt_result_texts.append(result)
@@ -181,13 +226,19 @@ class TradingApp(QMainWindow):
             return
         
         max_operate_amount = self.get_amounts("Invest")
+        if max_operate_amount <= 0:
+            return
+        
+        '''
         exists_params = QMessageBox.question(self, "Confirm", "Does it exist that learned parameters for ARIMA?", QMessageBox.Yes | QMessageBox.No) == QMessageBox.Yes
         if exists_params:
             orders = utils.get_saved_orders(symbols)
         else:
             orders = {}
+        '''
         invester_name = f"{symbols}"
         interval = '30m'
+        orders = {}
         process_name = f"{symbols[0]}_{symbols[1]}_{interval}"
         
         if invester_name in self.investers:
@@ -220,6 +271,16 @@ class TradingApp(QMainWindow):
         QMessageBox.information(self, "Done", "Recommendation finishied")
     
     def update_invest_log_list(self, text):
+        if "$END$" in text:
+            process_name = text.split('&')[1]
+            self.processes[process_name].stop()
+            self.processes[process_name].wait()
+            del self.processes[process_name]
+            for i in range(0, self.process_list_widget.count()):
+                item = self.process_list_widget.item(i)
+                if item.text() == process_name:
+                    self.process_list_widget.takeItem(i)
+            return
         self.invest_log_list.addItem(text)
         
     def schedule_action(self, interval, process_name, invester_name):
@@ -227,7 +288,7 @@ class TradingApp(QMainWindow):
             QMessageBox.warning(self, "Warning", "Process already scheduled for these symbols.")
             return
         
-        worker_thread = WorkerThread(interval, process_name, self.investers[invester_name], self.invest_logs)
+        worker_thread = InvestThread(interval, process_name, self.investers[invester_name], self.invest_logs)
         worker_thread.update_signal.connect(self.update_invest_log_list)
         worker_thread.start()
         self.processes[process_name] = worker_thread

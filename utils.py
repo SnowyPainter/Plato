@@ -27,7 +27,16 @@ def today_and_month_ago():
     last_month_first_day = last_month_last_day.replace(day=1)
     start = last_month_first_day.strftime('%Y-%m-%d')
     return start, end
-    
+
+def is_valid_date_format(date_str):
+    pattern = r'^20\d{2}-\d{2}-\d{2}$'
+    return re.match(pattern, date_str) is not None
+
+def start_end_date_valid(start, end):
+    start_date = datetime.strptime(start, "%Y-%m-%d")
+    end_date = datetime.strptime(end, "%Y-%m-%d")
+    return start_date < end_date
+
 def create_params_dir():
     if not os.path.isdir('./model_params'):
         os.makedirs('./model_params')
