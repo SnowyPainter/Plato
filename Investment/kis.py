@@ -140,7 +140,7 @@ class KISClient:
         code = symbol.split('.')[0]
         qty = self._max_units_could_affordable(ratio, self.init_amount, self.current_amount, price, 0.0025)
         if qty == 0:
-            return
+            return 0
 
         resp = self.broker.create_limit_buy_order(
             symbol = code,
@@ -166,11 +166,11 @@ class KISClient:
         code = symbol.split('.')[0]
         if not (code in self.stocks_qty):
             self.stocks_qty[code] = 0
-            return
+            return 0
         price = int(price)
         qty = self._max_units_could_sell(ratio, self.init_amount, self.stocks_qty[code], price, 0.0025)
         if qty == 0:
-            return
+            return 0
         resp = {'msg1' : '11'}
         resp = self.broker.create_market_sell_order(
             symbol=code,

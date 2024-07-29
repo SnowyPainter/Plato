@@ -151,13 +151,13 @@ class NeoInvest:
                 continue
             alpha_ratio = min(abs(alpha), 1)
             qty = self.client.sell(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
-            text += f"Sell {stock}, ratio: {alpha_ratio}, qty: {qty}"
+            text += f"Sell {stock}, ratio: {alpha_ratio}, qty: {qty}\n"
         for stock, alpha in action_dicts[0].items(): # buy
             if stock in not_trade:
                 continue
             alpha_ratio = min(abs(alpha), 1)
             qty = self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
-            text += f"Buy {stock}, ratio: {alpha_ratio}, qty: {qty}"
+            text += f"Buy {stock}, ratio: {alpha_ratio}, qty: {qty}\n"
         
         self.bar += 1
         print(text)
