@@ -160,6 +160,7 @@ class KISClient:
         self.stocks_qty[code] += qty
         self.trade_logger.log("buy", symbol, qty, price, self.calculate_evaluated())
         self.logger.log(f"Buy {code} - {qty}({ratio*100}%, {qty*price}), price: {price}, {resp['msg1']} | current {self.current_amount}")
+        return qty
         
     def sell(self, symbol, price, ratio):
         code = symbol.split('.')[0]
@@ -179,3 +180,4 @@ class KISClient:
         self.stocks_qty[code] -= qty
         self.trade_logger.log("sell", symbol, qty, price, self.calculate_evaluated())
         self.logger.log(f"Sell {code} - {qty}({ratio*100}%, {qty*price}), price: {price}, {resp['msg1']} | current {self.current_amount}")
+        return qty

@@ -126,7 +126,7 @@ class NeoInvest:
                 tech_signal[symbol] = (0.6 if trend == 2 else (-0.6 if trend == 0 else 0))
                 if trend == 1:
                     not_trade.append(symbol)
-        if self.bar % (hour_divided_time * 2) == 0:
+        if self.bar % hour_divided_time == 0:
             for stock, p in self.arima_trend_predictors.items():
                 y = p.make_forecast(10)
                 x = np.arange(len(y))
@@ -135,10 +135,11 @@ class NeoInvest:
                 serial_signal[stock] = (v if coefficients[0] > 0 else -v)
                 text += f"[ARIMA] {stock} goes {('Up' if coefficients[0] > 0 else 'Down')} | W:{(v if coefficients[0] > 0 else -v)} \n"
         
-        if self.bar > 0 and self.bar % (hour_divided_time * 6) == 0:
+        if self.bar > 0 and self.bar % (hour_divided_time * 3) == 0:
             for symbol in self.symbols:
                 self.volatilities[symbol].append(self.volatility_predictors[symbol].predict(self.raw_data.tail(hour_divided_time*6)))
                 self.volatility_w[symbol] = 0.9 if self.volatilities[symbol][-1] - self.volatilities[symbol][-2] > 0 else 2
+                text += f"[Volatility Predictor] {symbol} w: {self.volatility_w[symbol]}"
         for symbol in self.symbols:
             trade_dict[symbol] += (serial_signal[symbol] + tech_signal[symbol]) / 2
         
@@ -149,14 +150,14 @@ class NeoInvest:
             if stock in not_trade:
                 continue
             alpha_ratio = min(abs(alpha), 1)
-            print("Sell ", stock, alpha_ratio)
-            #self.client.sell(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
+            qty = self.client.sell(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
+            text += f"Sell {stock}, ratio: {alpha_ratio}, qty: {qty}"
         for stock, alpha in action_dicts[0].items(): # buy
             if stock in not_trade:
                 continue
             alpha_ratio = min(abs(alpha), 1)
-            print("Buy ", stock, alpha_ratio)
-            #self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
+            qty = self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
+            text += f"Buy {stock}, ratio: {alpha_ratio}, qty: {qty}"
         
         self.bar += 1
         print(text)
