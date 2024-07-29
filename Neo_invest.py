@@ -76,6 +76,17 @@ class NeoInvest:
                 self.orders = utils.get_saved_orders(self.symbols)
         self.bar = 0
 
+    def get_information(self):
+        text = f"MOA: {self.client.max_operate_amount}\n"
+        text += f"Stocks: {self.client.stocks_qty}\n"
+        text += f"AVGP: {self.client.stocks_avg_price}\n"
+        text += f"Cash: {self.client.max_operate_cash()}\n"
+        text += f"Bar: {self.bar}\n"
+        return text
+    
+    def update_max_operate_amount(self, amount):
+        self.client.update_max_operate_amount(amount)
+    
     def append_current_data(self):
         df = self._get_current_prices(self.symbols)
         self.raw_data = pd.concat([self.raw_data, df])
@@ -139,13 +150,13 @@ class NeoInvest:
                 continue
             alpha_ratio = min(abs(alpha), 1)
             print("Sell ", stock, alpha_ratio)
-            self.client.sell(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
+            #self.client.sell(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
         for stock, alpha in action_dicts[0].items(): # buy
             if stock in not_trade:
                 continue
             alpha_ratio = min(abs(alpha), 1)
             print("Buy ", stock, alpha_ratio)
-            self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
+            #self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
         
         self.bar += 1
         print(text)

@@ -19,16 +19,17 @@ Again, **I don't sell the program, I just share my models as open source**. GUI,
 
 | stock pair | sharp | return | theme |
 |------------|-------|--------|-------|
-|010620.KS 009540.KS|1.58|43%~45%|ship|
-|012450.KS 079550.KS|1.55|19%~42%|military|
+|010620.KS, 009540.KS|1.58|43%~45%|ship|
+|012450.KS, 079550.KS|1.55|19%~42%|military|
 
 ## Best Return
 
 | stock pair | sharp | return | theme |
 |------------|-------|--------|-------|
-|006360.KS 047040.KS|0.83|11%~32%|building|
-|329180.KS 009540.KS|1.17|57%~59%|ship|
-|009540.KS 012450.KS|1.33|54%~56%|military|
+|006360.KS, 047040.KS|0.83|11%~32%|building|
+|329180.KS, 009540.KS|1.17|57%~59%|ship|
+|009540.KS, 012450.KS|1.33|54%~56%|military|
+|064350.KS, 012450.KS|1.19|34%~36%|military|
 
 # Returns
 

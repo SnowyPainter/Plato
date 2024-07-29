@@ -1,6 +1,6 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QLabel, QComboBox, QLineEdit, QMessageBox, QInputDialog, QListWidget, QListWidgetItem
-from PyQt5.QtCore import QThread, QTimer, pyqtSlot, pyqtSignal
+from PyQt5.QtWidgets import QMenu, QAction, QApplication, QMainWindow, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QLabel, QComboBox, QLineEdit, QMessageBox, QInputDialog, QListWidget, QListWidgetItem
+from PyQt5.QtCore import Qt, QThread, QTimer, pyqtSlot, pyqtSignal
 import time
 from datetime import datetime, timedelta
 import multiprocessing as mp
@@ -14,7 +14,7 @@ import connect_tester
 
 class InvestThread(QThread):
     update_signal = pyqtSignal(str)
-
+    
     def __init__(self, interval, process_name, invester, invest_logs):
         super().__init__()
         self.interval = interval
@@ -22,7 +22,13 @@ class InvestThread(QThread):
         self.invester = invester
         self.invest_logs = invest_logs
         self._is_running = True
-
+    
+    @pyqtSlot(str)
+    def invest_info_update_signal_update(self, body):
+        value = body.split('&')[1]
+        if "$MOA$" in body:
+            self.invester.update_max_operate_amount(float(value))
+    
     def run(self):
         def action():
             self.invester.append_current_data()
@@ -90,11 +96,10 @@ class TradingApp(QMainWindow):
         self.act_layout.addWidget(self.process_list_label)
 
         self.process_list_widget = QListWidget()
+        self.process_list_widget.itemDoubleClicked.connect(self.show_process_info)
+        self.process_list_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.process_list_widget.customContextMenuRequested.connect(self.show_proc_interact_menu)
         self.act_layout.addWidget(self.process_list_widget)
-        
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.clicked.connect(self.cancel_selected_process)
-        self.act_layout.addWidget(self.cancel_button)
         
         self.refresh_token_btn = QPushButton("Refresh Token")
         self.refresh_token_btn.clicked.connect(self.refresh_token)
@@ -126,7 +131,77 @@ class TradingApp(QMainWindow):
         self.hour_divided_time = 1
         self.scheduled_jobs = {}
         self.processes = {}
+    
+    def show_proc_interact_menu(self, position):
+        selected_item = self.process_list_widget.itemAt(position)
+        if selected_item is not None:
+            menu = QMenu()
+            cancel_action = QAction('Cancel', self)
+            cancel_action.triggered.connect(lambda: self.cancel_selected_process(selected_item))
+            menu.addAction(cancel_action)
 
+            update_moa = QAction('Update MOA', self)
+            update_moa.triggered.connect(lambda: self.update_moa(selected_item))
+            menu.addAction(update_moa)
+            
+            show_info = QAction('Info', self)
+            show_info.triggered.connect(lambda: self.show_process_info(selected_item))
+            menu.addAction(show_info)
+            
+            menu.exec_(self.process_list_widget.viewport().mapToGlobal(position))
+    
+    def show_process_info(self, item):
+        if item is None:
+            return
+        
+        proc = self.processes[item.text()]
+        text = ''
+        text += f"===== {proc.process_name} =====\n"
+        text += f"{proc.invester.get_information()}"
+        QMessageBox.information(self, f'{proc.process_name} Info', text)
+    
+    def update_moa(self, item):
+        if item:
+            value, ok = QInputDialog.getDouble(self, "Update MOA", "Enter Max Operate Amount:")
+            if ok:
+                self.processes[item.text()].invest_info_update_signal_update(f"$MOA$&{value}")
+    def cancel_selected_process(self, item):
+        if not item:
+            QMessageBox.warning(self, "Warning", "You didn't select any process.")
+            return
+        process_name = item.text()
+        if process_name in self.processes:
+            self.processes[process_name].stop()
+            self.processes[process_name].wait()
+            del self.processes[process_name]
+        self.process_list_widget.takeItem(self.process_list_widget.row(item))
+        QMessageBox.information(self, "Cancel", f"{process_name} is canceled.")
+    
+    def update_invest_log_list(self, text):
+        if "$END$" in text:
+            process_name = text.split('&')[1]
+            self.processes[process_name].stop()
+            self.processes[process_name].wait()
+            del self.processes[process_name]
+            for i in range(0, self.process_list_widget.count()):
+                item = self.process_list_widget.item(i)
+                if item.text() == process_name:
+                    self.process_list_widget.takeItem(i)
+            return
+        self.invest_log_list.addItem(text)
+        
+    def schedule_action(self, interval, process_name, invester_name):
+        if process_name in self.processes:
+            QMessageBox.warning(self, "Warning", "Process already scheduled for these symbols.")
+            return
+        
+        worker_thread = InvestThread(interval, process_name, self.investers[invester_name], self.invest_logs)
+        worker_thread.update_signal.connect(self.update_invest_log_list)
+        worker_thread.start()
+        self.processes[process_name] = worker_thread
+    
+    
+    
     def show_invest_log(self, item):
         index = self.invest_log_list.row(item)
         t = self.invest_logs[index]
@@ -272,47 +347,7 @@ class TradingApp(QMainWindow):
             corr_high_finder.save_results(results, theme_name)
         QMessageBox.information(self, "Done", "Recommendation finishied")
     
-    def update_invest_log_list(self, text):
-        if "$END$" in text:
-            process_name = text.split('&')[1]
-            self.processes[process_name].stop()
-            self.processes[process_name].wait()
-            del self.processes[process_name]
-            for i in range(0, self.process_list_widget.count()):
-                item = self.process_list_widget.item(i)
-                if item.text() == process_name:
-                    self.process_list_widget.takeItem(i)
-            return
-        self.invest_log_list.addItem(text)
-        
-    def schedule_action(self, interval, process_name, invester_name):
-        if process_name in self.processes:
-            QMessageBox.warning(self, "Warning", "Process already scheduled for these symbols.")
-            return
-        
-        worker_thread = InvestThread(interval, process_name, self.investers[invester_name], self.invest_logs)
-        worker_thread.update_signal.connect(self.update_invest_log_list)
-        worker_thread.start()
-        self.processes[process_name] = worker_thread
     
-    def cancel_selected_process(self):
-        selected_items = self.process_list_widget.selectedItems()
-        if not selected_items:
-            QMessageBox.warning(self, "Warning", "You didn't select any process.")
-            return
-
-        process_name = ''
-        for item in selected_items:
-            process_name = item.text()
-            
-            if process_name in self.processes:
-                self.processes[process_name].stop()
-                self.processes[process_name].wait()
-                del self.processes[process_name]
-
-            self.process_list_widget.takeItem(self.process_list_widget.row(item))
-
-        QMessageBox.information(self, "Cancel", f"{process_name} is canceled.")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

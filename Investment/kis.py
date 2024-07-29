@@ -114,7 +114,11 @@ class KISClient:
         
         for stock, qty in self.stocks_qty.items():
             self.logger.log(f"{stock} : {qty} - {self.stocks_avg_price[stock]}")
-        
+    
+    def update_max_operate_amount(self, amount):
+        self.init_amount = amount
+        self.max_operate_amount = amount
+    
     def is_market_open(self):
         now = datetime.now()
         return (now.hour >= 9) and (now.hour <= 15 and now.minute <= 30)
