@@ -130,7 +130,7 @@ class NeoInvest:
                 self.volatility_w[symbol] = 0.9 if self.volatilities[symbol][-1] - self.volatilities[symbol][-2] > 0 else 2
         for symbol in self.symbols:
             trade_dict[symbol] += (serial_signal[symbol] + tech_signal[symbol]) / 2
-
+        
         cash, limit = self.client.max_operate_cash(), self.client.max_operate_amount
         action_dicts = [utils.preprocess_weights({k: self._vw_apply(k, v) for k, v in trade_dict.items() if v > 0}, cash, limit), 
                         {k: self._vw_apply(k, v) for k, v in trade_dict.items() if v < 0}]

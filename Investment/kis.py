@@ -43,11 +43,13 @@ class KISClient:
     
     #매입 단가 기준 자산 (투입 금액)
     def _asset_bought_amount(self):
+        stocks_qty, stocks_avg_price = self._get_acc_status()
+        
         asset_before_evlu = 0
         for symbol in self.symbols:
             symbol = symbol[:6]
-            if symbol in self.stocks_qty and symbol in self.stocks_avg_price:
-                asset_before_evlu += self.stocks_qty[symbol] * self.stocks_avg_price[symbol]
+            if symbol in stocks_qty and symbol in stocks_avg_price:
+                asset_before_evlu += stocks_qty[symbol] * stocks_avg_price[symbol]
         return asset_before_evlu
     
     def max_operate_cash(self):
@@ -59,14 +61,15 @@ class KISClient:
         money = init_amount * ratio * (1+fee)
         qty = math.floor(money / price)
         bought_asset = self._asset_bought_amount()
-        if bought_asset > self.max_operate_amount:
+        if current_amount <= 0:
             qty = 0
-        if bought_asset + (qty * price) > self.max_operate_amount:
-            qty = math.floor(((self.max_operate_amount - bought_asset) * (1 + fee)) / price)
+        elif bought_asset > self.max_operate_amount:
+            qty = 0
+        elif bought_asset + (qty * price) > self.max_operate_amount:
+            qty = math.floor(((self.max_operate_amount - bought_asset) * (1 - fee)) / price)
         else:
-            qty_by_curr_amount = math.floor((current_amount * (1 + fee) / price))
-            qty = qty if qty_by_curr_amount > qty else qty_by_curr_amount
-        return qty
+            qty = math.floor(((current_amount * ratio * (1 - fee)) / price))
+        return abs(qty)
 
     def _max_units_could_sell(self, ratio, init_amount, current_units, price, fee):
         money = init_amount * ratio * (1-fee)
@@ -135,6 +138,7 @@ class KISClient:
         qty = self._max_units_could_affordable(ratio, self.init_amount, self.current_amount, price, 0.0025)
         if qty == 0:
             return
+
         resp = self.broker.create_limit_buy_order(
             symbol = code,
             price = str(price),
@@ -147,7 +151,7 @@ class KISClient:
                 quantity = str(qty-1),
             )
             qty -= 1
-        self.current_amount -= qty * price * (1 + 0.0025)
+        self.current_amount -= qty * price * (1 - 0.0025)
         if not (code in self.stocks_qty):
             self.stocks_qty[code] = 0
         self.stocks_qty[code] += qty
