@@ -61,14 +61,15 @@ class KISClient:
         money = init_amount * ratio * (1+fee)
         qty = math.floor(money / price)
         bought_asset = self._asset_bought_amount()
-        if current_amount <= 0:
-            qty = 0
-        elif bought_asset > self.max_operate_amount:
-            qty = 0
-        elif bought_asset + (qty * price) > self.max_operate_amount:
+        if current_amount <= 0 or bought_asset > self.max_operate_amount:
+            return 0
+        
+        if bought_asset + (qty * price) > self.max_operate_amount:
             qty = math.floor(((self.max_operate_amount - bought_asset) * (1 - fee)) / price)
-        else:
-            qty = math.floor(((current_amount * ratio * (1 - fee)) / price))
+            print(qty, bought_asset, ((self.max_operate_amount - bought_asset) * (1 - fee)), self.max_operate_amount)
+        
+        print(qty)
+        
         return abs(qty)
 
     def _max_units_could_sell(self, ratio, init_amount, current_units, price, fee):
@@ -139,6 +140,8 @@ class KISClient:
         if qty == 0:
             return
 
+        resp = {'msg1' : '11'}
+        '''
         resp = self.broker.create_limit_buy_order(
             symbol = code,
             price = str(price),
@@ -151,6 +154,7 @@ class KISClient:
                 quantity = str(qty-1),
             )
             qty -= 1
+        '''
         self.current_amount -= qty * price * (1 - 0.0025)
         if not (code in self.stocks_qty):
             self.stocks_qty[code] = 0
@@ -167,10 +171,13 @@ class KISClient:
         qty = self._max_units_could_sell(ratio, self.init_amount, self.stocks_qty[code], price, 0.0025)
         if qty == 0:
             return
+        resp = {'msg1' : '11'}
+        '''
         resp = self.broker.create_market_sell_order(
             symbol=code,
             quantity=str(qty)
         )
+        '''
         self.current_amount += qty * price * (1 - 0.0025)
         self.stocks_qty[code] -= qty
         self.trade_logger.log("sell", symbol, qty, price, self.calculate_evaluated())
