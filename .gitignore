@@ -5,3 +5,6 @@ log/
 settings/*.csv
 test.py
 *.txt
+*.csv
+*.keras
+*.tf
