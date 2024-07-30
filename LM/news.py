@@ -1,5 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
+from datetime import datetime
 import os
 import pandas as pd
 import numpy as np
@@ -71,9 +72,8 @@ class NewsReader:
         self.MODEL_NAME = "klue/bert-base"
         self.BEST_MODEL_NAME = './models/news_model.tf'
         
-        self.train_x, self.train_y, self.test_x, self.test_y = self._get_dataset()
-        
     def train_model(self):
+        self.train_x, self.train_y, self.test_x, self.test_y = self._get_dataset()
         model = TFBertForSequenceClassification.from_pretrained(self.MODEL_NAME, num_labels=3, from_pt=True)
         token_inputs = tf.keras.layers.Input((self.MAX_SEQ_LEN,), dtype = tf.int32, name = 'input_word_ids')
         mask_inputs = tf.keras.layers.Input((self.MAX_SEQ_LEN,), dtype = tf.int32, name = 'input_masks')
@@ -123,7 +123,12 @@ class NewsReader:
     def analyze(self, data):
         return self.model.predict(data)
 
-    def label_argmax(self, prediction):
+    def score(self, analyzed):
+        weights = np.array([0, 0.7, -1.8])
+        scores = np.dot(analyzed, weights)
+        return scores
+    
+    def label(self, prediction):
         max_indices = np.argmax(prediction, axis=1)
         labels = ['neutral', 'positive', 'negative']
         labeled_data = [labels[idx] for idx in max_indices]
@@ -153,7 +158,15 @@ class NewsReader:
         masks = np.array(masks)
         segments = np.array(segments)
         return [tokens, masks, segments]
-        
+    
+    def today_only(self, data):
+        d = []
+        for news in data:
+            date = datetime.strptime(news['date'], "%Y.%m.%d %H:%M").date()
+            if date == datetime.now().date():
+                d.append(news)
+        return d
+    
     def get_news_by_page(self, symbol, n):
         url = f"https://finance.naver.com/item/news_news.naver?code={symbol}&page={n}&clusterId="
         response = requests.get(url)

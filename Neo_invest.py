@@ -47,7 +47,7 @@ class NeoInvest:
         return raw_data
     
     def _vw_apply(self, stock, alpha):
-        return alpha * self.volatility_w[stock]
+        return alpha * self.volatility_w[stock] + self.news_bias[stock]
     
     def __init__(self, symbol1, symbol2, max_operate_amount, orders={}, nobacktest=False, nolog=False, only_backtest=False):
         self.symbols = [symbol1, symbol2]
@@ -62,7 +62,11 @@ class NeoInvest:
         self.volatility_predictors = volatility_predictor.create_volatility_predictors(self.symbols, data_for_vp)
         self.volatilities = {}
         self.volatility_w = {}
+        
+        self.news_bias = {}
+        
         for symbol in self.symbols:
+            self.news_bias[symbol] = 0
             self.volatilities[symbol] = []
             self.volatilities[symbol].append(self.volatility_predictors[symbol].predict(self.raw_data.tail(12)))
             self.volatility_w[symbol] = 1

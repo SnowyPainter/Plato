@@ -7,6 +7,7 @@ import multiprocessing as mp
 import os
 import configparser
 
+from LM import news
 import Neo_invest
 import corr_high_finder
 import utils
@@ -15,8 +16,9 @@ import connect_tester
 class InvestThread(QThread):
     update_signal = pyqtSignal(str)
     
-    def __init__(self, interval, process_name, invester, invest_logs):
+    def __init__(self, news_reader, interval, process_name, invester, invest_logs):
         super().__init__()
+        self.news_reader = news_reader
         self.interval = interval
         self.process_name = process_name
         self.invester = invester
@@ -36,6 +38,9 @@ class InvestThread(QThread):
             self.invest_logs.append(text)
             self.update_signal.emit(f"{self.invester.symbols} {datetime.now()}")
 
+        def update_news_bias(symbol, score):
+            self.invester.news_bias[symbol] = score / 10
+        
         start_time = datetime.strptime("09:00", "%H:%M").time()
         end_time = datetime.strptime("15:30", "%H:%M").time()
         interval_minutes = [0, 29]
@@ -43,6 +48,8 @@ class InvestThread(QThread):
             interval_minutes = [0]
         elif self.interval == '30m':
             interval_minutes = [0, 29]
+        
+        news_update_interval_minutes = [0, 10, 20, 30, 40, 50]
         
         now = datetime.now()
         if now > datetime.combine(now.date(), end_time):
@@ -54,7 +61,15 @@ class InvestThread(QThread):
                 curr = datetime.now()
                 if now.minute in interval_minutes and now.second == 1:
                     action()
-                    time.sleep(60) # 1분 대기 (1분 내에 다시 실행되지 않도록)
+                    time.sleep(60)
+                
+                if now.minute in news_update_interval_minutes and now.second == 1:
+                    for symbol in self.invester.symbols:
+                        news = self.news_reader.today_only(self.news_reader.get_news_by_page(symbol[:6], 1))
+                        score = sum(self.news_reader.score(self.news_reader.analyze(self.news_reader.preprocess_x(news))))
+                        update_news_bias(symbol, score)
+                        
+                    time.sleep(60)
                 
                 if curr.time() > end_time:
                     print(f"Trade Done {self.process_name}")
@@ -70,6 +85,9 @@ class TradingApp(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        self.news_reader = news.NewsReader()
+        self.news_reader.load_model()
+        
         self.setWindowTitle("Trading Application")
         self.setGeometry(100, 100, 400, 300)
         self.setFixedSize(1024, 680)
@@ -83,7 +101,7 @@ class TradingApp(QMainWindow):
         self.text_layout = QHBoxLayout()
         self.bt_layout = QVBoxLayout()
         self.invest_layout = QVBoxLayout()
-        
+
         self.central_widget.setLayout(self.body)
         self.option_combo = QComboBox()
         self.options = ['Backtest', 'Invest', 'Recommend Stocks']
@@ -123,8 +141,9 @@ class TradingApp(QMainWindow):
         
         self.etc_layout.addLayout(self.opt_layout, stretch=1)
         self.etc_layout.addLayout(self.text_layout, stretch=5)
-        self.text_layout.addLayout(self.bt_layout, stretch=1)
-        self.text_layout.addLayout(self.invest_layout, stretch=1)
+        self.text_layout.addLayout(self.bt_layout, stretch=2)
+        self.text_layout.addLayout(self.invest_layout, stretch=2)
+        self.text_layout.addLayout(self.news_layout, stretch=1)
         
         self.body.addLayout(self.act_layout, stretch=1)
         self.body.addLayout(self.etc_layout, stretch=3)
@@ -145,6 +164,10 @@ class TradingApp(QMainWindow):
             update_moa = QAction('Update MOA', self)
             update_moa.triggered.connect(lambda: self.update_moa(selected_item))
             menu.addAction(update_moa)
+            
+            news_evlu = QAction("Current News", self)
+            news_evlu.triggered.connect(lambda: self.show_news_evluate(selected_item))
+            menu.addAction(news_evlu)
             
             show_info = QAction('Info', self)
             show_info.triggered.connect(lambda: self.show_process_info(selected_item))
@@ -191,18 +214,22 @@ class TradingApp(QMainWindow):
                     self.process_list_widget.takeItem(i)
             return
         self.invest_log_list.addItem(text)
-        
-    def schedule_action(self, interval, process_name, invester_name):
-        if process_name in self.processes:
-            QMessageBox.warning(self, "Warning", "Process already scheduled for these symbols.")
-            return
-        
-        worker_thread = InvestThread(interval, process_name, self.investers[invester_name], self.invest_logs)
-        worker_thread.update_signal.connect(self.update_invest_log_list)
-        worker_thread.start()
-        self.processes[process_name] = worker_thread
     
-    
+    def show_news_evluate(self, item):
+        symbols = self.processes[item.text()].invester.symbols
+        text = ''
+        for symbol in symbols:
+            symbol = symbol[:6]
+            news_data = self.news_reader.today_only(self.news_reader.get_news_by_page(symbol, 1))
+            x = self.news_reader.preprocess_x(news_data)
+            analyzed = self.news_reader.analyze(x)
+            score = self.news_reader.score(analyzed)
+            label = self.news_reader.label(analyzed)
+            text += f"{symbol}'s Today News: {len(news_data)}\n"
+            text += f"Positive: {label.count('positive')}, Neutral: {label.count('neutral')}, Negative: {label.count('negative')}\n"
+            text += f"Total Score: {sum(score) :.2f}\n\n"
+        
+        QMessageBox.information(self, "News Evluate", text)
     
     def show_invest_log(self, item):
         index = self.invest_log_list.row(item)
@@ -327,7 +354,17 @@ class TradingApp(QMainWindow):
         self.investers[invester_name] = Neo_invest.NeoInvest(symbols[0], symbols[1], max_operate_amount, orders)
         self.process_list_widget.addItem(process_name)
         self.schedule_action(interval, process_name, invester_name)
-
+    
+    def schedule_action(self, interval, process_name, invester_name):
+        if process_name in self.processes:
+            QMessageBox.warning(self, "Warning", "Process already scheduled for these symbols.")
+            return
+        
+        worker_thread = InvestThread(self.news_reader, interval, process_name, self.investers[invester_name], self.invest_logs)
+        worker_thread.update_signal.connect(self.update_invest_log_list)
+        worker_thread.start()
+        self.processes[process_name] = worker_thread
+        
     def recommend_stocks(self):
         processes = []
         result_batch = []
