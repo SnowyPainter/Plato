@@ -110,12 +110,15 @@ class NeoInvest:
         
         buy_list, sell_list, alpha_ratio = self.OU.get_signal(self.symbols[0], self.symbols[1], price1, price2)
         
+        text += "Pair Trade ALPHA \n"
         text += f"[OU] Buy {buy_list} | Sell {sell_list} | Alpha : {alpha_ratio} \n"
-        
+        text += "\n"
         for b in buy_list:
             trade_dict[b] += alpha_ratio
         for s in sell_list:
             trade_dict[s] -= alpha_ratio
+        
+        text += "Models ALPHA \n"
         
         if self.bar % hour_divided_time == 0:
             for symbol in self.symbols:
@@ -139,13 +142,16 @@ class NeoInvest:
             for symbol in self.symbols:
                 self.volatilities[symbol].append(self.volatility_predictors[symbol].predict(self.raw_data.tail(hour_divided_time*6)))
                 self.volatility_w[symbol] = 0.9 if self.volatilities[symbol][-1] - self.volatilities[symbol][-2] > 0 else 2
-                text += f"[Volatility Predictor] {symbol} w: {self.volatility_w[symbol]}"
+                text += f"[Volatility Predictor] {symbol} w: {self.volatility_w[symbol]}\n"
         for symbol in self.symbols:
             trade_dict[symbol] += (serial_signal[symbol] + tech_signal[symbol]) / 2
         
         cash, limit = self.client.max_operate_cash(), self.client.max_operate_amount
         action_dicts = [utils.preprocess_weights({k: self._vw_apply(k, v) for k, v in trade_dict.items() if v > 0}, cash, limit), 
                         {k: self._vw_apply(k, v) for k, v in trade_dict.items() if v < 0}]
+        
+        text += "\n"
+        
         for stock, alpha in action_dicts[1].items(): # sell
             if stock in not_trade:
                 continue
