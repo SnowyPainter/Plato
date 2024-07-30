@@ -143,7 +143,6 @@ class TradingApp(QMainWindow):
         self.etc_layout.addLayout(self.text_layout, stretch=5)
         self.text_layout.addLayout(self.bt_layout, stretch=2)
         self.text_layout.addLayout(self.invest_layout, stretch=2)
-        self.text_layout.addLayout(self.news_layout, stretch=1)
         
         self.body.addLayout(self.act_layout, stretch=1)
         self.body.addLayout(self.etc_layout, stretch=3)
