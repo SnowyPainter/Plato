@@ -86,7 +86,10 @@ class TradingApp(QMainWindow):
         super().__init__()
 
         self.news_reader = news.NewsReader()
-        self.news_reader.load_model()
+        if os.path.exists('./models/'+self.news_reader.BEST_MODEL_NAME):
+            self.news_reader.load_model()
+        else:
+            self.news_reader.train_model()
         
         self.setWindowTitle("Trading Application")
         self.setGeometry(100, 100, 400, 300)
@@ -146,8 +149,6 @@ class TradingApp(QMainWindow):
         
         self.body.addLayout(self.act_layout, stretch=1)
         self.body.addLayout(self.etc_layout, stretch=3)
-        
-        self.investers = {}
         self.hour_divided_time = 1
         self.scheduled_jobs = {}
         self.processes = {}
@@ -341,25 +342,19 @@ class TradingApp(QMainWindow):
         else:
             orders = {}
         '''
-        invester_name = f"{symbols}"
         interval = '30m'
         orders = {}
         process_name = f"{symbols[0]}_{symbols[1]}_{interval}"
         
-        if invester_name in self.investers:
-            QMessageBox.warning(self, "Warning", "Investment process already running for these symbols.")
-            return
-        
-        self.investers[invester_name] = Neo_invest.NeoInvest(symbols[0], symbols[1], max_operate_amount, orders)
         self.process_list_widget.addItem(process_name)
-        self.schedule_action(interval, process_name, invester_name)
+        self.schedule_action(interval, process_name, Neo_invest.NeoInvest(symbols[0], symbols[1], max_operate_amount, orders))
     
-    def schedule_action(self, interval, process_name, invester_name):
+    def schedule_action(self, interval, process_name, invester):
         if process_name in self.processes:
             QMessageBox.warning(self, "Warning", "Process already scheduled for these symbols.")
             return
         
-        worker_thread = InvestThread(self.news_reader, interval, process_name, self.investers[invester_name], self.invest_logs)
+        worker_thread = InvestThread(self.news_reader, interval, process_name, invester, self.invest_logs)
         worker_thread.update_signal.connect(self.update_invest_log_list)
         worker_thread.start()
         self.processes[process_name] = worker_thread
