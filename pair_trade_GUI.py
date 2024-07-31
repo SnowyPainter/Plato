@@ -1,13 +1,15 @@
 import sys
-from PyQt5.QtWidgets import QMenu, QAction, QApplication, QMainWindow, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QLabel, QComboBox, QLineEdit, QMessageBox, QInputDialog, QListWidget, QListWidgetItem
+from PyQt5.QtWidgets import QLineEdit, QMenu, QAction, QApplication, QMainWindow, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QLabel, QComboBox, QLineEdit, QMessageBox, QInputDialog, QListWidget, QListWidgetItem
 from PyQt5.QtCore import Qt, QThread, QTimer, pyqtSlot, pyqtSignal
 import time
 from datetime import datetime, timedelta
 import multiprocessing as mp
 import os
 import configparser
+import math
 
 from LM import news
+from Models import MC_VaR
 import Neo_invest
 import corr_high_finder
 import utils
@@ -86,7 +88,7 @@ class TradingApp(QMainWindow):
         super().__init__()
 
         self.news_reader = news.NewsReader()
-        if os.path.exists('./models/'+self.news_reader.BEST_MODEL_NAME):
+        if os.path.exists(self.news_reader.BEST_MODEL_NAME):
             self.news_reader.load_model()
         else:
             self.news_reader.train_model()
@@ -104,7 +106,8 @@ class TradingApp(QMainWindow):
         self.text_layout = QHBoxLayout()
         self.bt_layout = QVBoxLayout()
         self.invest_layout = QVBoxLayout()
-
+        self.help_layout = QVBoxLayout()
+        
         self.central_widget.setLayout(self.body)
         self.option_combo = QComboBox()
         self.options = ['Backtest', 'Invest', 'Recommend Stocks']
@@ -142,10 +145,18 @@ class TradingApp(QMainWindow):
         self.invest_log_list.itemClicked.connect(self.show_invest_log)
         self.invest_layout.addWidget(self.invest_log_list)
         
+        self.var_text = QLabel("VaR NaN", self)
+        self.var_button = QPushButton("VaR", self)
+        self.var_button.clicked.connect(self.calculate_VaR)
+        
+        self.help_layout.addWidget(self.var_text)
+        self.help_layout.addWidget(self.var_button)
+        
         self.etc_layout.addLayout(self.opt_layout, stretch=1)
         self.etc_layout.addLayout(self.text_layout, stretch=5)
         self.text_layout.addLayout(self.bt_layout, stretch=2)
         self.text_layout.addLayout(self.invest_layout, stretch=2)
+        self.text_layout.addLayout(self.help_layout, stretch=1)
         
         self.body.addLayout(self.act_layout, stretch=1)
         self.body.addLayout(self.etc_layout, stretch=3)
@@ -153,6 +164,17 @@ class TradingApp(QMainWindow):
         self.scheduled_jobs = {}
         self.processes = {}
     
+    def calculate_VaR(self):
+        vols = {}
+        initial_investment = 0
+        for name, process in self.processes.items():
+            initial_investment += process.invester.client.max_operate_amount
+            for symbol, vol in process.invester.volatilities.items():
+                vols[symbol] = (sum(vol) / len(vol)) / 10
+        var = MC_VaR.get_MC_VaR(initial_investment, list(vols.values()))
+                                
+        self.var_text.setText(f"VaR 5%: {utils.korean_currency_format(round(var, 2))}")
+        
     def show_proc_interact_menu(self, position):
         selected_item = self.process_list_widget.itemAt(position)
         if selected_item is not None:

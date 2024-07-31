@@ -1,6 +1,15 @@
 import numpy as np 
 import pandas as pd
 
+def get_MC_VaR(initial_investment, volatilities):
+    num_simulations = 10000
+    num_days = 1
+    returns = np.random.normal(0, volatilities, (num_simulations, len(volatilities)))
+    portfolio_returns = np.sum(returns, axis=1)
+    portfolio_values = initial_investment * (1 + portfolio_returns)
+    var_value = initial_investment - np.percentile(portfolio_values, 5)
+    return var_value
+
 def get_historical_VaR2(returns, initial_investment, n_var):
     portfolio_returns = np.diff(returns) / returns[:-1]
     mean_return = portfolio_returns.mean()

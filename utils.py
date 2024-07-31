@@ -71,6 +71,9 @@ def get_saved_orders(symbols):
         return {}
     return orders
 
+def korean_currency_format(amount):
+    return format(amount, ',')
+
 THEMES = {
     "반도체" : {
         "HBM" : 536,
