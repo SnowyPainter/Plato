@@ -7,9 +7,10 @@ import multiprocessing as mp
 import os
 import configparser
 import math
+import pandas as pd
 
 from LM import news
-from Models import MC_VaR
+from Models import MC_VaR, CAPM
 import Neo_invest
 import corr_high_finder
 import utils
@@ -149,8 +150,14 @@ class TradingApp(QMainWindow):
         self.var_button = QPushButton("VaR", self)
         self.var_button.clicked.connect(self.calculate_VaR)
         
+        self.capm_text = QLabel("CAPM NaN", self)
+        self.capm_button = QPushButton("CAPM", self)
+        self.capm_button.clicked.connect(self.calculate_CAPM)
+        
         self.help_layout.addWidget(self.var_text)
         self.help_layout.addWidget(self.var_button)
+        self.help_layout.addWidget(self.capm_text)
+        self.help_layout.addWidget(self.capm_button)
         
         self.etc_layout.addLayout(self.opt_layout, stretch=1)
         self.etc_layout.addLayout(self.text_layout, stretch=5)
@@ -164,13 +171,31 @@ class TradingApp(QMainWindow):
         self.scheduled_jobs = {}
         self.processes = {}
     
+    def calculate_CAPM(self):
+        price_raw = pd.DataFrame()
+        price_columns = []
+        qty_weights = {}
+        for name, process in self.processes.items():
+            columns = []
+            for symbol in process.invester.symbols:
+                if symbol[:6] in process.invester.client.stocks_qty and process.invester.client.stocks_qty[symbol[:6]] > 0:
+                    c = symbol+"_Price"
+                    qty_weights[c] = process.invester.client.stocks_qty[symbol[:6]]
+                    price_columns.append(c)
+                    price_raw[c] = process.invester.raw_data[c]
+        
+        qty_sum = sum(qty_weights.values())
+        qty_weights = {stock: value / qty_sum for stock, value in qty_weights.items()}
+        
+        self.capm_text.setText(f"[1-] Exp %: {CAPM.CAPM(price_raw, utils.load_market_index(), price_columns, qty_weights) * 100 :.2f} %")
+    
     def calculate_VaR(self):
         vols = {}
         initial_investment = 0
         for name, process in self.processes.items():
             initial_investment += process.invester.client.max_operate_amount
             for symbol, vol in process.invester.volatilities.items():
-                vols[symbol] = (sum(vol) / len(vol)) / 10
+                vols[symbol] = (sum(vol) / len(vol))
         var = MC_VaR.get_MC_VaR(initial_investment, list(vols.values()))
                                 
         self.var_text.setText(f"VaR 5%: {utils.korean_currency_format(round(var, 2))}")

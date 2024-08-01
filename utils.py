@@ -134,6 +134,9 @@ def load_historical_datas(symbols, start, end, interval='1d'):
     
     return merged, edit_symbols
 
+def load_market_index(market='^KS11', interval='30m'):
+    return np.array(load_historical_data(market, today_before(1), today(), interval)[market+"_Price"])
+
 def coef(y):
     x = np.arange(len(y))
     coefficients = np.polyfit(x, y, 1)
