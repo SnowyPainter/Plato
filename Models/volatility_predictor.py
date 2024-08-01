@@ -9,9 +9,11 @@ from sklearn.metrics import mean_squared_error
 
 class VolatilityPredictor:
     def _preprocess_data(self):
-        price = self.raw[self.price_column]
-        return_pct = price.pct_change()
-        self.data = pd.DataFrame({'Price' : utils.nplog(price), 'Volatility' : return_pct.rolling(window=12).std(), 'Return' : return_pct})
+        price = utils.normalize(self.raw)[self.price_column]
+        return_pct = self.raw[self.price_column].pct_change()
+        volatility = return_pct.rolling(window=12).std()
+        
+        self.data = pd.DataFrame({'Price' : price, 'Volatility' : volatility, 'Return' : return_pct})
         self.data.dropna(inplace=True)
         self.X = self.data[['Price', 'Return']].values
         self.Y = self.data[['Volatility']].values
@@ -26,9 +28,11 @@ class VolatilityPredictor:
         X_train, X_test, y_train, y_test = train_test_split(self.X, self.Y, test_size=0.4, random_state=42)
         self.mlp = MLPRegressor(hidden_layer_sizes=(256, 128), max_iter=1000, random_state=42)
         self.mlp.fit(X_train, y_train)
-        
         y_train_pred = self.mlp.predict(X_train)
         y_test_pred = self.mlp.predict(X_test)
+        
+        print(y_test, y_test_pred)
+        
         train_mse = mean_squared_error(y_train, y_train_pred)
         test_mse = mean_squared_error(y_test, y_test_pred)
 
@@ -36,9 +40,9 @@ class VolatilityPredictor:
         return train_mse, test_mse
     
     def predict(self, x):
-        price = x[self.price_column]
-        return_pct = price.pct_change()
-        x = pd.DataFrame({'Return' :return_pct, 'Price' : utils.nplog(price)})
+        price = utils.normalize(x)[self.price_column]
+        return_pct = x[self.price_column].pct_change()
+        x = pd.DataFrame({'Price' : price, 'Return' :return_pct})
         x.dropna(inplace=True)
         return self.mlp.predict(x.tail(1))[0]
     
