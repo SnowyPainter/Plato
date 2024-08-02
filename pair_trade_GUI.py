@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QLineEdit, QMenu, QAction, QApplication, QMainWindow, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QLabel, QComboBox, QLineEdit, QMessageBox, QInputDialog, QListWidget, QListWidgetItem
+from PyQt5.QtWidgets import QCheckBox,QLineEdit, QMenu, QWidgetAction, QAction, QApplication, QMainWindow, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QLabel, QComboBox, QLineEdit, QMessageBox, QInputDialog, QListWidget, QListWidgetItem
 from PyQt5.QtCore import Qt, QThread, QTimer, pyqtSlot, pyqtSignal
 import time
 from datetime import datetime, timedelta
@@ -20,6 +20,17 @@ import connect_tester
 class InvestThread(QThread):
     update_signal = pyqtSignal(str)
     
+    def _forced_sell(self, sell_list, ratio, title=''):
+        for sell in sell_list:
+            symbol = sell['symbol']
+            price = self.watcher.prices[symbol][-1]['pr']
+            qty = self.invester.client.sell(symbol, price, ratio)
+            text = ''
+            text += f"{title} \n"
+            text += f"{symbol} : {sell['p'] * 100 :.2f}, qty: {qty}\n"
+            self.invest_logs.append(text)
+            self.update_signal.emit(f"{title} {self.invester.symbols} {datetime.now()}")
+    
     def __init__(self, news_reader, interval, process_name, invester, invest_logs):
         super().__init__()
         self.news_reader = news_reader
@@ -28,6 +39,8 @@ class InvestThread(QThread):
         self.invester = invester
         self.watcher = watcher.Watcher(self.invester.client, self.invester.symbols)
         self.invest_logs = invest_logs
+        self.watch_TP_flag = False
+        self.watch_SL_flag = False
         self._is_running = True
     
     @pyqtSlot(str)
@@ -35,7 +48,11 @@ class InvestThread(QThread):
         value = body.split('&')[1]
         if "$MOA$" in body:
             self.invester.update_max_operate_amount(float(value))
-    
+        if "$WATCH_TP$" in body:
+            self.watch_TP_flag = True if value == "True" else False
+        if "$WATCH_SL$" in body:
+            self.watch_SL_flag = True if value == "True" else False
+
     def run(self):
         def action():
             self.invester.append_current_data()
@@ -65,29 +82,23 @@ class InvestThread(QThread):
         while self._is_running:
             now = datetime.now()
             if start_time <= now.time() <= end_time:
-                curr = datetime.now()
                 if now.minute in interval_minutes and now.second == 1:
                     action()
                     time.sleep(60)
-                if now.minute in watch_TP_interval_minutes and now.second == 1:
+                if now.minute in watch_TP_interval_minutes and now.second == 1 and self.watch_TP_flag:
                     sell_list = self.watcher.watch_TP(0.05)
-                    for tp in sell_list:
-                        ratio = 0.5
-                        symbol = tp['symbol']
-                        price = self.watcher.prices[symbol][-1]['pr']
-                        qty = self.invester.client.sell(symbol, price, ratio)
-                        text = ''
-                        text += "Forced Take Profit \n"
-                        text += f"{symbol} : {tp['p'] * 100 :.2f}, qty: {qty}\n"
-                        self.invest_logs.append(text)
-                        self.update_signal.emit(f"TP {self.invester.symbols} {curr}")
+                    self._forced_sell(sell_list, 0.5, 'Take Profit')
+                    
+                if now.minute in watch_SL_interval_minutes and now.second == 1 and self.watch_SL_flag:
+                    sell_list = self.watcher.watch_SL(-0.05)
+                    self._forced_sell(sell_list, 1, 'Stop Loss')
+                    
                 if now.minute in news_update_interval_minutes and now.second == 1:
                     for symbol in self.invester.symbols:
                         news = self.news_reader.today_only(self.news_reader.get_news_by_page(symbol[:6], 1))
                         score = sum(self.news_reader.score(self.news_reader.analyze(self.news_reader.preprocess_x(news))))
                         update_news_bias(symbol, score)
-                #if now.minute in watch_SL_interval_minutes and now.second == 40:
-                #    sell_list = self.watcher.watch_SL(-0.05)
+                
                     
                 #if curr.time() > end_time:
                 #    print(f"Trade Done {self.process_name}")
@@ -231,11 +242,38 @@ class TradingApp(QMainWindow):
             news_evlu.triggered.connect(lambda: self.show_news_evluate(selected_item))
             menu.addAction(news_evlu)
             
+            TP_checkbox_action = QWidgetAction(self)
+            self.TP_checkbox = QCheckBox('Watch TP')
+            self.TP_checkbox.stateChanged.connect(self.watch_tp_checkbox_state_changed)
+            TP_checkbox_action.setDefaultWidget(self.TP_checkbox)            
+            menu.addAction(TP_checkbox_action)
+            
+            SL_checkbox_action = QWidgetAction(self)
+            self.SL_checkbox = QCheckBox('Watch SL')
+            self.SL_checkbox.stateChanged.connect(self.watch_sl_checkbox_state_changed)
+            SL_checkbox_action.setDefaultWidget(self.SL_checkbox)
+            menu.addAction(SL_checkbox_action)
+            
             show_info = QAction('Info', self)
             show_info.triggered.connect(lambda: self.show_process_info(selected_item))
             menu.addAction(show_info)
             
             menu.exec_(self.process_list_widget.viewport().mapToGlobal(position))
+    
+    def watch_tp_checkbox_state_changed(self, state):
+        item = self.process_list_widget.currentItem()
+        if state == Qt.Checked:
+            self.processes[item.text()].invest_info_update_signal_update(f"$WATCH_TP$&True")
+        else:
+            self.processes[item.text()].invest_info_update_signal_update(f"$WATCH_TP$&False")
+    
+    def watch_sl_checkbox_state_changed(self, state):
+        item = self.process_list_widget.currentItem()
+        if state == Qt.Checked:
+            self.processes[item.text()].invest_info_update_signal_update(f"$WATCH_SL$&True")
+        else:
+            self.processes[item.text()].invest_info_update_signal_update(f"$WATCH_SL$&False")
+    
     
     def show_process_info(self, item):
         if item is None:
