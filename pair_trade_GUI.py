@@ -54,9 +54,9 @@ class InvestThread(QThread):
         elif self.interval == '30m':
             interval_minutes = [0, 29]
         
-        watch_TP_interval_minutes = list(range(0, 60, 3))
-        watch_SL_interval_minutes = list(range(0, 60, 3))
-        news_update_interval_minutes = list(range(0, 60, 10))
+        watch_TP_interval_minutes = list(range(1, 60, 3))
+        watch_SL_interval_minutes = list(range(1, 60, 3))
+        news_update_interval_minutes = list(range(0, 60, 11))
         
         now = datetime.now()
         if now > datetime.combine(now.date(), end_time):
@@ -68,6 +68,7 @@ class InvestThread(QThread):
                 curr = datetime.now()
                 if now.minute in interval_minutes and now.second == 1:
                     action()
+                    time.sleep(60)
                 if now.minute in watch_TP_interval_minutes and now.second == 1:
                     sell_list = self.watcher.watch_TP(0.05)
                     for tp in sell_list:
@@ -79,7 +80,7 @@ class InvestThread(QThread):
                         text += "Forced Take Profit \n"
                         text += f"{symbol} : {tp['p'] * 100 :.2f}, qty: {qty}\n"
                         self.invest_logs.append(text)
-                        self.update_signal.emit(f"TP {self.invester.symbols} {datetime.now()}")
+                        self.update_signal.emit(f"TP {self.invester.symbols} {curr}")
                 if now.minute in news_update_interval_minutes and now.second == 1:
                     for symbol in self.invester.symbols:
                         news = self.news_reader.today_only(self.news_reader.get_news_by_page(symbol[:6], 1))
@@ -88,12 +89,10 @@ class InvestThread(QThread):
                 #if now.minute in watch_SL_interval_minutes and now.second == 40:
                 #    sell_list = self.watcher.watch_SL(-0.05)
                     
-                if curr.time() > end_time:
-                    print(f"Trade Done {self.process_name}")
-                    self.update_signal.emit(f"$END$&{self.process_name}")
-                    break
-                    
-                time.sleep(60)
+                #if curr.time() > end_time:
+                #    print(f"Trade Done {self.process_name}")
+                #    self.update_signal.emit(f"$END$&{self.process_name}")
+                #    break
 
             time.sleep(1)
         
