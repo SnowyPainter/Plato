@@ -28,7 +28,7 @@ class KISClient:
     
     # Get balance는 딱 한번 호출됨.
     
-    def _get_acc_status(self):
+    def get_acc_status(self):
         broker = self.broker
         resp = broker.fetch_balance()
         #amount = int(resp['output2'][0]['prvs_rcdl_excc_amt'])
@@ -43,7 +43,7 @@ class KISClient:
     
     #매입 단가 기준 자산 (투입 금액)
     def _asset_bought_amount(self):
-        stocks_qty, stocks_avg_price = self._get_acc_status()
+        stocks_qty, stocks_avg_price = self.get_acc_status()
         
         asset_before_evlu = 0
         for symbol in self.symbols:
@@ -94,7 +94,7 @@ class KISClient:
         self.current_price = {}
         
         self.broker = mojito.KoreaInvestment(api_key=self.keys["APIKEY"], api_secret=self.keys["APISECRET"], acc_no=self.keys["ACCNO"], mock=False)
-        self.stocks_qty, self.stocks_avg_price = self._get_acc_status()
+        self.stocks_qty, self.stocks_avg_price = self.get_acc_status()
         
         self.current_amount = self.max_operate_cash()
         self.logger.log(f"Loading balance ...")

@@ -12,6 +12,7 @@ import pandas as pd
 from LM import news
 from Models import MC_VaR, CAPM
 import Neo_invest
+from Investment import kis, watcher
 import corr_high_finder
 import utils
 import connect_tester
@@ -25,6 +26,7 @@ class InvestThread(QThread):
         self.interval = interval
         self.process_name = process_name
         self.invester = invester
+        self.watcher = watcher.Watcher(self.invester.client, self.invester.symbols)
         self.invest_logs = invest_logs
         self._is_running = True
     
@@ -52,7 +54,9 @@ class InvestThread(QThread):
         elif self.interval == '30m':
             interval_minutes = [0, 29]
         
-        news_update_interval_minutes = [0, 10, 20, 30, 40, 50]
+        watch_TP_interval_minutes = list(range(0, 60, 3))
+        watch_SL_interval_minutes = list(range(0, 60, 3))
+        news_update_interval_minutes = list(range(0, 60, 10))
         
         now = datetime.now()
         if now > datetime.combine(now.date(), end_time):
@@ -64,20 +68,32 @@ class InvestThread(QThread):
                 curr = datetime.now()
                 if now.minute in interval_minutes and now.second == 1:
                     action()
-                    time.sleep(60)
-                
+                if now.minute in watch_TP_interval_minutes and now.second == 1:
+                    sell_list = self.watcher.watch_TP(0.05)
+                    for tp in sell_list:
+                        ratio = 0.5
+                        symbol = tp['symbol']
+                        price = self.watcher.prices[symbol][-1]['pr']
+                        qty = self.invester.client.sell(symbol, price, ratio)
+                        text = ''
+                        text += "Forced Take Profit \n"
+                        text += f"{symbol} : {tp['p'] * 100 :.2f}, qty: {qty}\n"
+                        self.invest_logs.append(text)
+                        self.update_signal.emit(f"TP {self.invester.symbols} {datetime.now()}")
                 if now.minute in news_update_interval_minutes and now.second == 1:
                     for symbol in self.invester.symbols:
                         news = self.news_reader.today_only(self.news_reader.get_news_by_page(symbol[:6], 1))
                         score = sum(self.news_reader.score(self.news_reader.analyze(self.news_reader.preprocess_x(news))))
                         update_news_bias(symbol, score)
-                        
-                    time.sleep(60)
-                
+                #if now.minute in watch_SL_interval_minutes and now.second == 40:
+                #    sell_list = self.watcher.watch_SL(-0.05)
+                    
                 if curr.time() > end_time:
                     print(f"Trade Done {self.process_name}")
                     self.update_signal.emit(f"$END$&{self.process_name}")
                     break
+                    
+                time.sleep(60)
 
             time.sleep(1)
         
@@ -268,6 +284,8 @@ class TradingApp(QMainWindow):
         for symbol in symbols:
             symbol = symbol[:6]
             news_data = self.news_reader.today_only(self.news_reader.get_news_by_page(symbol, 1))
+            if len(news_data) == 0:
+                continue
             x = self.news_reader.preprocess_x(news_data)
             analyzed = self.news_reader.analyze(x)
             score = self.news_reader.score(analyzed)
@@ -394,7 +412,8 @@ class TradingApp(QMainWindow):
         process_name = f"{symbols[0]}_{symbols[1]}_{interval}"
         
         self.process_list_widget.addItem(process_name)
-        self.schedule_action(interval, process_name, Neo_invest.NeoInvest(symbols[0], symbols[1], max_operate_amount, orders))
+        client = kis.KISClient(symbols, max_operate_amount, nolog=False)
+        self.schedule_action(interval, process_name, Neo_invest.NeoInvest(symbols[0], symbols[1], client, orders))
     
     def schedule_action(self, interval, process_name, invester):
         if process_name in self.processes:

@@ -31,8 +31,6 @@ class VolatilityPredictor:
         y_train_pred = self.mlp.predict(X_train)
         y_test_pred = self.mlp.predict(X_test)
         
-        print(y_test, y_test_pred)
-        
         train_mse = mean_squared_error(y_train, y_train_pred)
         test_mse = mean_squared_error(y_test, y_test_pred)
 

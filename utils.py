@@ -227,3 +227,19 @@ def calculate_sale_percentage(current_percentage, target_percentage):
 
 def get_pct_changes(returns):
     return pd.Series(returns).pct_change().dropna()
+
+def calculate_fee(amount):
+    if amount < 500000:
+        fee = amount * 0.004971487
+    elif 500000 <= amount < 3000000:
+        fee = amount * 0.001271487 + 2000
+    elif 3000000 <= amount < 30000000:
+        fee = amount * 0.001271487 + 1500
+    else:
+        fee = amount * 0.001171487
+    return fee * 2
+
+def calculate_stock_increase_p(qty, avgp, curr_pr):
+    fee = calculate_fee(qty * avgp)
+    net = curr_pr - fee
+    return (net_profit - avgp) / avgp

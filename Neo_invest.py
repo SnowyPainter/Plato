@@ -49,9 +49,9 @@ class NeoInvest:
     def _vw_apply(self, stock, alpha):
         return alpha * self.volatility_w[stock] + self.news_bias[stock]
     
-    def __init__(self, symbol1, symbol2, max_operate_amount, orders={}, nobacktest=False, nolog=False, only_backtest=False):
+    def __init__(self, symbol1, symbol2, client, orders={}, nobacktest=False, only_backtest=False):
         self.symbols = [symbol1, symbol2]
-        self.client = kis.KISClient(self.symbols, max_operate_amount, nolog)
+        self.client = client
         self.OU = OU()
         start, end, interval = utils.today_before(50), utils.today(), '30m'
         self.raw_data = self._create_init_data(self.symbols, start, end, interval)
