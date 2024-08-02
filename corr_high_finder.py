@@ -59,10 +59,12 @@ def save_results(results, fname):
     with open(f"{fname}.txt", 'w') as f:
         f.write(text)
 
+from Investment import kis
 
 def run_backtest(pair, start, end, results):
     name = pair[0] + " " + pair[1]
-    neo = Neo_invest.NeoInvest(pair[0], pair[1], 1000000000, nolog=True, only_backtest=True)
+    client = kis.KISClient([pair[0], pair[1]], 1000000000, nolog=True)
+    neo = Neo_invest.NeoInvest(pair[0], pair[1], client, only_backtest=True)
     result = neo.backtest(start, end, print_result=False)
     results[name] = result
 

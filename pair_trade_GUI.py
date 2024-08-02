@@ -465,6 +465,7 @@ class TradingApp(QMainWindow):
     def recommend_stocks(self):
         processes = []
         result_batch = []
+        QMessageBox.information(self, "Warn", "This process needs 30m~1h.")
         for theme_name, theme in utils.THEMES.items():
             pairs = corr_high_finder.find_stocks_to_invest(theme)
             if len(pairs) == 0:
