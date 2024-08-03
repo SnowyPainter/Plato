@@ -4,7 +4,7 @@ from Alpha5.strategy import *
 from Models import trend_predictor, ARIMA, volatility_predictor 
 import backtester
 import utils
-from Investment import kis
+from Investment import kis, invest_client
 
 from datetime import datetime
 import itertools
@@ -15,56 +15,25 @@ import pandas as pd
 import warnings
 warnings.filterwarnings("ignore")
 
-class NeoInvest:
-    def _process_data(self, raw, norm_raw, bar):
-        price_columns = list(map(lambda symbol: symbol+"_Price", self.symbols))
-        LMA = norm_raw[price_columns].rolling(120).mean().iloc[bar]
-        SMA = norm_raw[price_columns].rolling(25).mean().iloc[bar]
-        return {
-            "norm_price_series" : utils.nplog(raw)[price_columns],
-            "norm_price" : norm_raw[price_columns].iloc[bar],
-            "price" : raw[price_columns].iloc[bar],
-            "LMA" : LMA,
-            "SMA" : SMA
-        }
-    def _get_current_prices(self, symbols):
-        df = {}
-        for symbol in symbols:
-            code = symbol.split('.')[0]
-            pr,hpr,lpr = self.client.get_price(code)
-            df[symbol+"_Price"] = pr
-            df[symbol+"_High"] = hpr
-            df[symbol+"_Low"] = lpr
-        df = pd.DataFrame(df, index=[datetime.now()])
-        return df
-    def _create_init_data(self, symbols, start, end, interval):
-        raw_data, symbols = utils.load_historical_datas(symbols, start, end, interval)
-        raw_data.index = pd.to_datetime(raw_data.index).tz_localize(None)
-        raw_data.drop(columns=[col for col in raw_data.columns if col.endswith('_Volume')], inplace=True)
-        
-        raw_data.dropna(inplace=True)
-        
-        return raw_data
+class NeoInvest(invest_client.PairTradeInvest):
     
     def _vw_apply(self, stock, alpha):
         return alpha * self.volatility_w[stock] + self.news_bias[stock]
     
     def __init__(self, symbol1, symbol2, client, orders={}, nobacktest=False, only_backtest=False):
-        self.symbols = [symbol1, symbol2]
-        self.client = client
-        self.OU = OU()
-        start, end, interval = utils.today_before(50), utils.today(), '30m'
-        self.raw_data = self._create_init_data(self.symbols, start, end, interval)
+        invest_client.PairTradeInvest.__init__(self, symbol1, symbol2, client, nobacktest=nobacktest, only_backtest=only_backtest)
+        
         data_for_vp = self._create_init_data(self.symbols, utils.today_before(300), utils.today(), '1d')
+        
+        # Strategies
+        self.OU = OU()
         self.technical_trend_predictors = trend_predictor.create_trend_predictors(self.symbols, self.raw_data)
         if not only_backtest:
             self.arima_trend_predictors = ARIMA.create_price_predictor(utils.nplog(self.raw_data).tail(60), self.symbols)
         self.volatility_predictors = volatility_predictor.create_volatility_predictors(self.symbols, data_for_vp)
         self.volatilities = {}
         self.volatility_w = {}
-        
         self.news_bias = {}
-        
         for symbol in self.symbols:
             self.news_bias[symbol] = 0
             self.volatilities[symbol] = []
@@ -80,24 +49,8 @@ class NeoInvest:
                 self.orders = utils.get_saved_orders(self.symbols)
         self.bar = 0
 
-    def get_information(self):
-        text = f"MOA: {self.client.max_operate_amount}\n"
-        text += f"Stocks: {self.client.stocks_qty}\n"
-        text += f"AVGP: {self.client.stocks_avg_price}\n"
-        text += f"Cash: {self.client.max_operate_cash()}\n"
-        text += f"Bar: {self.bar}\n"
-        return text
-    
-    def update_max_operate_amount(self, amount):
-        self.client.update_max_operate_amount(amount)
-    
-    def append_current_data(self):
-        df = self._get_current_prices(self.symbols)
-        self.raw_data = pd.concat([self.raw_data, df])
-        self.current_data = self._process_data(self.raw_data, utils.normalize(self.raw_data), -1)
-    
     def action(self, hour_divided_time=1):
-        window = hour_divided_time * 50
+        window = hour_divided_time * 52
         log = utils.nplog(self.raw_data)
         price1 = log[self.symbols[0]+"_Price"].tail(window)
         price2 = log[self.symbols[1]+"_Price"].tail(window)
@@ -122,9 +75,8 @@ class NeoInvest:
         for s in sell_list:
             trade_dict[s] -= alpha_ratio
         
-        text += "Models ALPHA \n"
-        
         if self.bar % hour_divided_time == 0:
+            text += "Technical alpha \n"
             for symbol in self.symbols:
                 if not (symbol in self.technical_trend_predictors):
                     continue
@@ -134,6 +86,7 @@ class NeoInvest:
                 if trend == 1:
                     not_trade.append(symbol)
         if self.bar % hour_divided_time == 0:
+            text += "ARIMA alpha \n"
             for stock, p in self.arima_trend_predictors.items():
                 y = p.make_forecast(10)
                 x = np.arange(len(y))
@@ -143,10 +96,12 @@ class NeoInvest:
                 text += f"[ARIMA] {stock} goes {('Up' if coefficients[0] > 0 else 'Down')} | W:{(v if coefficients[0] > 0 else -v)} \n"
         
         if self.bar > 0 and self.bar % (hour_divided_time * 3) == 0:
+            text += "Volatility alpha \n"
             for symbol in self.symbols:
                 self.volatilities[symbol].append(self.volatility_predictors[symbol].predict(self.raw_data.tail(hour_divided_time*6)))
                 self.volatility_w[symbol] = 0.9 if self.volatilities[symbol][-1] - self.volatilities[symbol][-2] > 0 else 2
                 text += f"[Volatility Predictor] {symbol} w: {self.volatility_w[symbol]}\n"
+        
         for symbol in self.symbols:
             trade_dict[symbol] += (serial_signal[symbol] + tech_signal[symbol]) / 2
         
@@ -174,9 +129,7 @@ class NeoInvest:
         return text
         
     def backtest(self, start='2023-01-01', end='2024-01-01', interval='1h', print_result=True, seperated=False, show_plot=True, show_result=True, show_only_text=False):
-        
         print(f"Backtest for {self.symbols} | {start} ~ {end} *{interval}")
-        
         limit = 1000000000
         bt = backtester.Backtester(self.symbols, start, end, interval, limit, 0.0025, self._process_data)
         bar = 0

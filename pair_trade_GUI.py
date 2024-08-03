@@ -47,7 +47,7 @@ class InvestThread(QThread):
     def invest_info_update_signal_update(self, body):
         value = body.split('&')[1]
         if "$MOA$" in body:
-            self.invester.update_max_operate_amount(float(value))
+            self.invester.client.update_max_operate_amount(float(value))
         if "$WATCH_TP$" in body:
             self.watch_TP_flag = True if value == "True" else False
         if "$WATCH_SL$" in body:

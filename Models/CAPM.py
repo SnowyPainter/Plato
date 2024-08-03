@@ -12,7 +12,8 @@ def CAPM(price_raw, market, columns, stock_weights):
     price_raw.dropna(inplace=True)
     market = (np.diff(market) / market[:-1])
     price_raw = price_raw.tail(len(market))
-
+    if len(market) <= 1:
+        return 0.0
     E_R_m = np.mean(market)
     betas = {}
     for col in columns:
