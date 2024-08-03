@@ -32,7 +32,7 @@ class Watcher:
         sell_list = []
         for symbol in self.symbols:
             code = symbol[:6]
-            p = utils.calculate_stock_increase_p(self.qtys[code], self.avgps[code], self.prices[symbol][-1]['pr'])            
+            p = utils.calculate_stock_increase_p(self.qtys[code], self.avgps[code], self.prices[symbol][-1]['pr'])
             if p <= sl:
                 sell_list.append({"symbol":symbol, "p": p})
         return sell_list

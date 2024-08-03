@@ -65,8 +65,8 @@ class InvestThread(QThread):
         elif self.interval == '30m':
             interval_minutes = [0, 29]
         
-        watch_TP_interval_minutes = list(range(0, 60, 3))
-        watch_SL_interval_minutes = list(range(0, 60, 3))
+        watch_TP_interval_minutes = list(range(0, 60, 1))
+        watch_SL_interval_minutes = list(range(0, 60, 1))
         news_update_interval_minutes = list(range(0, 60, 10))
         
         now = datetime.now()
@@ -78,11 +78,12 @@ class InvestThread(QThread):
             if start_time <= now.time() <= end_time:
                 if now.minute in interval_minutes and now.second == 1:
                     self._invest_action()
-                    time.sleep(60)
+                    time.sleep(1)
+                
                 if now.minute in watch_TP_interval_minutes and now.second == 1 and self.watch_TP_flag:
                     sell_list = self.watcher.watch_TP(self.tp)
                     self._forced_sell(sell_list, 0.5, 'Take Profit')
-                    
+                
                 if now.minute in watch_SL_interval_minutes and now.second == 1 and self.watch_SL_flag:
                     sell_list = self.watcher.watch_SL(self.sl)
                     self._forced_sell(sell_list, 1, 'Stop Loss')

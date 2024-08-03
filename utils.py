@@ -241,5 +241,5 @@ def calculate_fee(amount):
 
 def calculate_stock_increase_p(qty, avgp, curr_pr):
     fee = calculate_fee(qty * avgp)
-    net = curr_pr - fee
-    return (net - avgp) / avgp
+    net = (curr_pr * qty) - fee
+    return (net - (avgp * qty)) / (avgp * qty)

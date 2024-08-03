@@ -48,8 +48,11 @@ class TradingApp(QMainWindow):
         self.option_combo.addItems(self.options)
         self.act_layout.addWidget(self.option_combo)
 
+        self.add_preset_button = QPushButton("Create Preset", self)
+        self.add_preset_button.clicked.connect(self.create_preset)
         self.continue_button = QPushButton("Run")
         self.continue_button.clicked.connect(self.handle_option)
+        self.act_layout.addWidget(self.add_preset_button)
         self.act_layout.addWidget(self.continue_button)
 
         self.process_list_label = QLabel("Invest process running:")
@@ -87,14 +90,10 @@ class TradingApp(QMainWindow):
         self.capm_button = QPushButton("CAPM", self)
         self.capm_button.clicked.connect(self.calculate_CAPM)
         
-        self.add_preset_button = QPushButton("Create Preset", self)
-        self.add_preset_button.clicked.connect(self.create_preset)
-        
         self.help_layout.addWidget(self.var_text)
         self.help_layout.addWidget(self.var_button)
         self.help_layout.addWidget(self.capm_text)
         self.help_layout.addWidget(self.capm_button)
-        self.help_layout.addWidget(self.add_preset_button)
         
         self.etc_layout.addLayout(self.opt_layout, stretch=1)
         self.etc_layout.addLayout(self.text_layout, stretch=5)
