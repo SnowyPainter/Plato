@@ -1,114 +1,21 @@
 import sys
 from PyQt5.QtWidgets import QCheckBox,QLineEdit, QMenu, QWidgetAction, QAction, QApplication, QMainWindow, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QLabel, QComboBox, QLineEdit, QMessageBox, QInputDialog, QListWidget, QListWidgetItem
 from PyQt5.QtCore import Qt, QThread, QTimer, pyqtSlot, pyqtSignal
-import time
-from datetime import datetime, timedelta
 import multiprocessing as mp
 import os
 import configparser
 import math
 import pandas as pd
+import json
 
+from UI import InvestThread, Presets
 from LM import news
 from Models import MC_VaR, CAPM
 import Neo_invest
-from Investment import kis, watcher
+from Investment import kis
 import corr_high_finder
 import utils
 import connect_tester
-
-class InvestThread(QThread):
-    update_signal = pyqtSignal(str)
-    
-    def _forced_sell(self, sell_list, ratio, title=''):
-        for sell in sell_list:
-            symbol = sell['symbol']
-            price = self.watcher.prices[symbol][-1]['pr']
-            qty = self.invester.client.sell(symbol, price, ratio)
-            text = ''
-            text += f"{title} \n"
-            text += f"{symbol} : {sell['p'] * 100 :.2f}, qty: {qty}\n"
-            self.invest_logs.append(text)
-            self.update_signal.emit(f"{title} {self.invester.symbols} {datetime.now()}")
-    
-    def __init__(self, news_reader, interval, process_name, invester, invest_logs):
-        super().__init__()
-        self.news_reader = news_reader
-        self.interval = interval
-        self.process_name = process_name
-        self.invester = invester
-        self.watcher = watcher.Watcher(self.invester.client, self.invester.symbols)
-        self.invest_logs = invest_logs
-        self.watch_TP_flag = False
-        self.watch_SL_flag = False
-        self._is_running = True
-    
-    @pyqtSlot(str)
-    def invest_info_update_signal_update(self, body):
-        value = body.split('&')[1]
-        if "$MOA$" in body:
-            self.invester.client.update_max_operate_amount(float(value))
-        if "$WATCH_TP$" in body:
-            self.watch_TP_flag = True if value == "True" else False
-        if "$WATCH_SL$" in body:
-            self.watch_SL_flag = True if value == "True" else False
-
-    def run(self):
-        def action():
-            self.invester.append_current_data()
-            text = self.invester.action(hour_divided_time=1 if self.interval == '1h' else 2)
-            self.invest_logs.append(text)
-            self.update_signal.emit(f"{self.invester.symbols} {datetime.now()}")
-
-        def update_news_bias(symbol, score):
-            self.invester.news_bias[symbol] = score / 10
-        
-        start_time = datetime.strptime("09:00", "%H:%M").time()
-        end_time = datetime.strptime("15:30", "%H:%M").time()
-        interval_minutes = [0, 29]
-        if self.interval == '1h':
-            interval_minutes = [0]
-        elif self.interval == '30m':
-            interval_minutes = [0, 29]
-        
-        watch_TP_interval_minutes = list(range(1, 60, 3))
-        watch_SL_interval_minutes = list(range(1, 60, 3))
-        news_update_interval_minutes = list(range(0, 60, 11))
-        
-        now = datetime.now()
-        if now > datetime.combine(now.date(), end_time):
-            start_time = (datetime.combine(now, start_time) + timedelta(days=1)).time()
-
-        while self._is_running:
-            now = datetime.now()
-            if start_time <= now.time() <= end_time:
-                if now.minute in interval_minutes and now.second == 1:
-                    action()
-                    time.sleep(60)
-                if now.minute in watch_TP_interval_minutes and now.second == 1 and self.watch_TP_flag:
-                    sell_list = self.watcher.watch_TP(0.05)
-                    self._forced_sell(sell_list, 0.5, 'Take Profit')
-                    
-                if now.minute in watch_SL_interval_minutes and now.second == 1 and self.watch_SL_flag:
-                    sell_list = self.watcher.watch_SL(-0.05)
-                    self._forced_sell(sell_list, 1, 'Stop Loss')
-                    
-                if now.minute in news_update_interval_minutes and now.second == 1:
-                    for symbol in self.invester.symbols:
-                        news = self.news_reader.today_only(self.news_reader.get_news_by_page(symbol[:6], 1))
-                        score = sum(self.news_reader.score(self.news_reader.analyze(self.news_reader.preprocess_x(news))))
-                        update_news_bias(symbol, score)
-                
-                    
-                #if curr.time() > end_time:
-                #    print(f"Trade Done {self.process_name}")
-                #    self.update_signal.emit(f"$END$&{self.process_name}")
-                #    break
-
-            time.sleep(1)
-        
-    def stop(self):
-        self._is_running = False
 
 class TradingApp(QMainWindow):
     def __init__(self):
@@ -180,10 +87,14 @@ class TradingApp(QMainWindow):
         self.capm_button = QPushButton("CAPM", self)
         self.capm_button.clicked.connect(self.calculate_CAPM)
         
+        self.add_preset_button = QPushButton("Create Preset", self)
+        self.add_preset_button.clicked.connect(self.create_preset)
+        
         self.help_layout.addWidget(self.var_text)
         self.help_layout.addWidget(self.var_button)
         self.help_layout.addWidget(self.capm_text)
         self.help_layout.addWidget(self.capm_button)
+        self.help_layout.addWidget(self.add_preset_button)
         
         self.etc_layout.addLayout(self.opt_layout, stretch=1)
         self.etc_layout.addLayout(self.text_layout, stretch=5)
@@ -196,6 +107,10 @@ class TradingApp(QMainWindow):
         self.hour_divided_time = 1
         self.scheduled_jobs = {}
         self.processes = {}
+    
+    def create_preset(self):
+        dialog = Presets.SavePresetDialog(self)
+        dialog.exec_()
     
     def calculate_CAPM(self):
         price_raw = pd.DataFrame()
@@ -242,15 +157,18 @@ class TradingApp(QMainWindow):
             news_evlu.triggered.connect(lambda: self.show_news_evluate(selected_item))
             menu.addAction(news_evlu)
             
+            process = self.processes[selected_item.text()]
             TP_checkbox_action = QWidgetAction(self)
-            self.TP_checkbox = QCheckBox('Watch TP')
+            self.TP_checkbox = QCheckBox('Sell TP')
             self.TP_checkbox.stateChanged.connect(self.watch_tp_checkbox_state_changed)
-            TP_checkbox_action.setDefaultWidget(self.TP_checkbox)            
+            self.TP_checkbox.setChecked(process.watch_TP_flag)
+            TP_checkbox_action.setDefaultWidget(self.TP_checkbox)  
             menu.addAction(TP_checkbox_action)
             
             SL_checkbox_action = QWidgetAction(self)
-            self.SL_checkbox = QCheckBox('Watch SL')
+            self.SL_checkbox = QCheckBox('Sell SL')
             self.SL_checkbox.stateChanged.connect(self.watch_sl_checkbox_state_changed)
+            self.SL_checkbox.setChecked(process.watch_SL_flag)
             SL_checkbox_action.setDefaultWidget(self.SL_checkbox)
             menu.addAction(SL_checkbox_action)
             
@@ -263,17 +181,16 @@ class TradingApp(QMainWindow):
     def watch_tp_checkbox_state_changed(self, state):
         item = self.process_list_widget.currentItem()
         if state == Qt.Checked:
-            self.processes[item.text()].invest_info_update_signal_update(f"$WATCH_TP$&True")
+            self.processes[item.text()].invest_info_update_signal_update(f"$WATCH_TP$&true")
         else:
-            self.processes[item.text()].invest_info_update_signal_update(f"$WATCH_TP$&False")
+            self.processes[item.text()].invest_info_update_signal_update(f"$WATCH_TP$&false")
     
     def watch_sl_checkbox_state_changed(self, state):
         item = self.process_list_widget.currentItem()
         if state == Qt.Checked:
-            self.processes[item.text()].invest_info_update_signal_update(f"$WATCH_SL$&True")
+            self.processes[item.text()].invest_info_update_signal_update(f"$WATCH_SL$&true")
         else:
-            self.processes[item.text()].invest_info_update_signal_update(f"$WATCH_SL$&False")
-    
+            self.processes[item.text()].invest_info_update_signal_update(f"$WATCH_SL$&false")
     
     def show_process_info(self, item):
         if item is None:
@@ -290,6 +207,7 @@ class TradingApp(QMainWindow):
             value, ok = QInputDialog.getDouble(self, "Update MOA", "Enter Max Operate Amount:")
             if ok:
                 self.processes[item.text()].invest_info_update_signal_update(f"$MOA$&{value}")
+                
     def cancel_selected_process(self, item):
         if not item:
             QMessageBox.warning(self, "Warning", "You didn't select any process.")
@@ -429,13 +347,19 @@ class TradingApp(QMainWindow):
         QMessageBox.information(self, "Done", "Backtesting Done")
 
     def invest(self):
-        symbols = self.get_symbols("Invest")
-        if len(symbols) == 0:
+        presets = Presets.get_presets()
+        if presets == []:
+            QMessageBox("Create or Choose your invest preset.")
             return
-        
-        max_operate_amount = self.get_amounts("Invest")
-        if max_operate_amount <= 0:
+        title, ok = QInputDialog.getItem(self, "Select Preset", "Choose a preset:", presets, 0, False)
+        prest = {}
+        if ok and title:
+            with open(f"./presets/{title}.json", 'r') as f:
+                preset = json.load(f)
+        else:
             return
+        detail = Presets.get_preset_details(preset)
+        QMessageBox.information(self, "Preset", detail)
         
         '''
         exists_params = QMessageBox.question(self, "Confirm", "Does it exist that learned parameters for ARIMA?", QMessageBox.Yes | QMessageBox.No) == QMessageBox.Yes
@@ -444,24 +368,22 @@ class TradingApp(QMainWindow):
         else:
             orders = {}
         '''
-        interval = '30m'
+        
+        symbols = [preset['symbol1'], preset['symbol2']]
         orders = {}
+        interval = '30m'
         process_name = f"{symbols[0]}_{symbols[1]}_{interval}"
         
-        self.process_list_widget.addItem(process_name)
-        client = kis.KISClient(symbols, max_operate_amount, nolog=False)
-        self.schedule_action(interval, process_name, Neo_invest.NeoInvest(symbols[0], symbols[1], client, orders))
-    
-    def schedule_action(self, interval, process_name, invester):
         if process_name in self.processes:
             QMessageBox.warning(self, "Warning", "Process already scheduled for these symbols.")
             return
-        
-        worker_thread = InvestThread(self.news_reader, interval, process_name, invester, self.invest_logs)
+        self.process_list_widget.addItem(process_name)
+        client = kis.KISClient(symbols, preset['max_operate_amount'], nolog=False)
+        worker_thread = InvestThread.InvestThread(self.news_reader, interval, process_name, Neo_invest.NeoInvest(symbols[0], symbols[1], client, orders), self.invest_logs, preset)
         worker_thread.update_signal.connect(self.update_invest_log_list)
         worker_thread.start()
         self.processes[process_name] = worker_thread
-        
+    
     def recommend_stocks(self):
         processes = []
         result_batch = []
@@ -483,8 +405,6 @@ class TradingApp(QMainWindow):
                 p.join()
             corr_high_finder.save_results(results, theme_name)
         QMessageBox.information(self, "Done", "Recommendation finishied")
-    
-    
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
