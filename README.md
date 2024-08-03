@@ -45,7 +45,7 @@ When rising during 2024-06-11 ~ 2024-01-01, Stock pair 329180.KS and 009540.KS
 | strategy | trades | end | best | worst | sharp |
 |----------|--------|-----|------|-------|-------|
 |Neo|140|48.56%|53.45%|-0.79%|1.29|
-|Compound|9|54.80%|59.65%|-0.85%|1.31|
+|Compound|9|65.90%|73.44%|-0.85%|1.44|
 
 When falling during 2024-06-11 ~ 2024-01-01, Stock pair 042700.KS and 000660.KS
 -----------
@@ -53,7 +53,7 @@ When falling during 2024-06-11 ~ 2024-01-01, Stock pair 042700.KS and 000660.KS
 | strategy | trades | end | best | worst | sharp |
 |----------|--------|-----|------|-------|-------|
 |Neo|14|-28.78%|2.49%|-31.23%|-1.12|
-|Compound|10|-14.66%|7.54%|-14.66%|0.36|
+|Compound|10|-15.45%|7.05%|-18.18%|-0.59|
 
 ### Results
 
