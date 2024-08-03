@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import calendar
 import json
 
-import Neo_invest
+from Strategy import Neo_invest
 
 def get_high_corr_pairs(start, end, themes):
     pairs = []

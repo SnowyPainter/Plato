@@ -8,10 +8,10 @@ import math
 import pandas as pd
 import json
 
+from Strategy import Neo_invest
 from UI import InvestThread, Presets
 from LM import news
 from Models import MC_VaR, CAPM
-import Neo_invest
 from Investment import kis
 import corr_high_finder
 import utils
@@ -21,13 +21,9 @@ class TradingApp(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.news_reader = news.NewsReader()
-        if os.path.exists(self.news_reader.BEST_MODEL_NAME):
-            self.news_reader.load_model()
-        else:
-            self.news_reader.train_model()
+        self.news_reader = None
         
-        self.setWindowTitle("Trading Application")
+        self.setWindowTitle("Pair Trader")
         self.setGeometry(100, 100, 400, 300)
         self.setFixedSize(1024, 680)
         self.central_widget = QWidget()
@@ -112,6 +108,9 @@ class TradingApp(QMainWindow):
         dialog.exec_()
     
     def calculate_CAPM(self):
+        if len(self.processes) == 0:
+            return
+        
         price_raw = pd.DataFrame()
         price_columns = []
         qty_weights = {}
@@ -130,6 +129,9 @@ class TradingApp(QMainWindow):
         self.capm_text.setText(f"[1-] Exp %: {CAPM.CAPM(price_raw, utils.load_market_index(), price_columns, qty_weights) * 100 :.2f} %")
     
     def calculate_VaR(self):
+        if len(self.processes) == 0:
+            return
+        
         vols = {}
         initial_investment = 0
         for name, process in self.processes.items():
@@ -296,18 +298,6 @@ class TradingApp(QMainWindow):
             self.recommend_stocks()
         else:
             QMessageBox.warning(self, "Warning", "Not Available Option.")
-    
-    def get_symbols(self, option):
-        symbols_input, ok = QInputDialog.getText(self, "Input", f"{option} - seperate symbols by ',' :")
-        if ok and symbols_input:
-            symbols = [symbol.strip() for symbol in symbols_input.split(",")]
-            if len(symbols) == 2:
-                return symbols
-            else:
-                QMessageBox.warning(self, "Warning", "Input two symbols seperate by ',' ")
-                return self.get_symbols(option)
-        else:
-            return []
 
     def get_bt_term(self, option):
         start, ok = QInputDialog.getText(self, "Input", f"{option} - Start(2023-xx-xx):")
@@ -331,54 +321,78 @@ class TradingApp(QMainWindow):
         
         return max_operate_amount
     
-    def backtest(self):
-        symbols = self.get_symbols("Backtest")
-        if len(symbols) == 0:
-            return
-        start, end = self.get_bt_term("Backtest")
-        if start == '' or end == '':
-            return
-        
-        invester = Neo_invest.NeoInvest(symbols[0], symbols[1], 10000000000, nolog=True, only_backtest=True)
-        result = invester.backtest(start, end, show_only_text=True)
-        self.bt_result_texts.append(result)
-        self.bt_result_list.addItem(f"{symbols} | {start} ~ {end}")
-        QMessageBox.information(self, "Done", "Backtesting Done")
-
-    def invest(self):
+    def _get_preset(self):
         presets = Presets.get_presets()
+        preset = {}
         if presets == []:
-            QMessageBox("Create or Choose your invest preset.")
-            return
+            QMessageBox.information(self, "Warn", "Create or Choose your invest preset.")
+            return {}
         title, ok = QInputDialog.getItem(self, "Select Preset", "Choose a preset:", presets, 0, False)
         prest = {}
         if ok and title:
             with open(f"./presets/{title}.json", 'r') as f:
                 preset = json.load(f)
         else:
-            return
-        detail = Presets.get_preset_details(preset)
-        QMessageBox.information(self, "Preset", detail)
-        
-        '''
-        exists_params = QMessageBox.question(self, "Confirm", "Does it exist that learned parameters for ARIMA?", QMessageBox.Yes | QMessageBox.No) == QMessageBox.Yes
-        if exists_params:
-            orders = utils.get_saved_orders(symbols)
+            return {}
+        return preset
+    
+    def _get_invester(self, symbols, client, nobacktest, only_backtest):
+        strategy, ok = QInputDialog.getItem(self, "Select Strategy", "Choose a strategy.", [
+            "Neo"
+        ], 0, False)
+        invester = None
+        if ok and strategy:
+            if strategy == "Neo":
+                if self.news_reader == None:
+                    self.news_reader = news.NewsReader()
+                    if os.path.exists(self.news_reader.BEST_MODEL_NAME):
+                        self.news_reader.load_model()
+                    else:
+                        QMessageBox.information(self, "Wait for a moment", "Training news model. It needs 20m.")
+                        self.news_reader.train_model()
+                invester = Neo_invest.NeoInvest(symbols[0], symbols[1], client, nobacktest=nobacktest, only_backtest=only_backtest)
         else:
-            orders = {}
-        '''
+            QMessageBox.information(self, "Warn", "Select a strategy.")
+            return None
+        return invester
+    
+    def backtest(self):
         
+        preset = self._get_preset()
+        if preset == {}:
+            return
         symbols = [preset['symbol1'], preset['symbol2']]
-        orders = {}
+        invester = self._get_invester(symbols, None, nobacktest=False, only_backtest=True)
+        if invester == None:
+            return
+        
+        start, end = self.get_bt_term("Backtest")
+        if start == '' or end == '':
+            return
+        result = invester.backtest(start, end, show_only_text=True)
+        self.bt_result_texts.append(result)
+        self.bt_result_list.addItem(f"{symbols} | {start} ~ {end}")
+        QMessageBox.information(self, "Done", "Backtesting Done")
+
+    def invest(self):
+        
+        preset = self._get_preset()
+        if preset == {}:
+            return
+        symbols = [preset['symbol1'], preset['symbol2']]
         interval = '30m'
         process_name = f"{symbols[0]}_{symbols[1]}_{interval}"
         
         if process_name in self.processes:
             QMessageBox.warning(self, "Warning", "Process already scheduled for these symbols.")
             return
-        self.process_list_widget.addItem(process_name)
+        
         client = kis.KISClient(symbols, preset['max_operate_amount'], nolog=False)
-        worker_thread = InvestThread.InvestThread(self.news_reader, interval, process_name, Neo_invest.NeoInvest(symbols[0], symbols[1], client, orders), self.invest_logs, preset)
+        invester = self._get_invester(symbols, client, nobacktest=True, only_backtest=False)
+        if invester == None:
+            return
+        self.process_list_widget.addItem(process_name)
+        worker_thread = InvestThread.InvestThread(self.news_reader, interval, process_name, invester, self.invest_logs, preset)
         worker_thread.update_signal.connect(self.update_invest_log_list)
         worker_thread.start()
         self.processes[process_name] = worker_thread
