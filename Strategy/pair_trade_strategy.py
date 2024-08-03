@@ -10,7 +10,7 @@ import pandas as pd
 import warnings
 warnings.filterwarnings("ignore")
 
-class PairTradeInvest(ABC):
+class PairTradeStrategy(ABC):
     def _process_data(self, raw, norm_raw, bar):
         price_columns = list(map(lambda symbol: symbol+"_Price", self.symbols))
         LMA = norm_raw[price_columns].rolling(120).mean().iloc[bar]

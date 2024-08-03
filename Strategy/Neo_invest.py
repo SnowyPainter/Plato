@@ -4,7 +4,8 @@ from Alpha5.strategy import *
 from Models import trend_predictor, ARIMA, volatility_predictor 
 import backtester
 import utils
-from Investment import kis, invest_client
+from Investment import kis
+from Strategy import pair_trade_strategy
 
 from datetime import datetime
 import itertools
@@ -15,13 +16,13 @@ import pandas as pd
 import warnings
 warnings.filterwarnings("ignore")
 
-class NeoInvest(invest_client.PairTradeInvest):
+class NeoInvest(pair_trade_strategy.PairTradeStrategy):
     
     def _vw_apply(self, stock, alpha):
         return alpha * self.volatility_w[stock] + self.news_bias[stock]
     
     def __init__(self, symbol1, symbol2, client, orders={}, nobacktest=False, only_backtest=False):
-        invest_client.PairTradeInvest.__init__(self, symbol1, symbol2, client, nobacktest=nobacktest, only_backtest=only_backtest)
+        pair_trade_strategy.PairTradeStrategy.__init__(self, symbol1, symbol2, client, nobacktest=nobacktest, only_backtest=only_backtest)
         
         data_for_vp = self._create_init_data(self.symbols, utils.today_before(300), utils.today(), '1d')
         
