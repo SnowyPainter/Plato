@@ -76,6 +76,7 @@ class Backtester:
         self.portfolio_returns = np.array(self.portfolio_returns)
         self.portfolio_returns[np.isnan(self.portfolio_returns)] = 0.0
         end_return, best_return, worst_return, sharp_ratio, VaR = utils.get_bt_result(self.portfolio_returns, self.portfolio_evaluates, self.init_amount)
+        VaR = round(VaR, 2)
         text = ""
         text += f"======= {self.symbols[0]} and {self.symbols[1]} =======\n"
         text += f"Backtest range {self.start} ~ {self.end} : {self.interval} \n"
@@ -83,7 +84,7 @@ class Backtester:
         text += f"End Return : {end_return * 100:.2f} % \n"
         text += f"Worst ~ Best return {worst_return * 100:.2f} ~ {best_return * 100:.2f} % \n\n"
         text += f"Sharp Ratio : {sharp_ratio :.4f}\n"
-        text += f"VaR : {VaR} / {self.init_amount}\n\n"
+        text += f"VaR : {utils.korean_currency_format(VaR)} / {utils.korean_currency_format(self.init_amount)}\n\n"
         
         for symbol in self.symbols:
             profits = self.protfolio_stock_profits[symbol]

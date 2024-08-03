@@ -4,7 +4,6 @@ from Alpha5.strategy import *
 from Models import trend_predictor, ARIMA, volatility_predictor 
 import backtester
 import utils
-from Investment import kis
 from Strategy import pair_trade_strategy
 
 from datetime import datetime
