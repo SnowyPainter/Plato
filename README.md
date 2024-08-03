@@ -8,7 +8,56 @@
 
 I do not sell the basic version of this program. Any losses arising from the use of the program are the responsibility of the user who executed the program.  
 If you enter information into the program and run it, investments will be made by models as soon as the market opens. **Please note that I am not responsible for any losses arising from this**.
-Again, **I don't sell the program, I just share my models as open source**. GUI, TUI, and all other programs are **not forcefully installed** and are **downloaded** by the user themselves, and everything related to the API is also **entered** directly, resulting in **investment**. I know you realize that if you run , you will be making an investment**.
+Again, **I don't sell the program, I just share my models as open source**. GUI, TUI, and all other programs are **not forcefully installed** and are **downloaded** by the user themselves, and everything related to the API is also **entered** directly, resulting in **investment**. I know you realize that if you run , you will be making an **investment**.
+
+# Strategies
+
+## Neo strategy
+
+* Commonly **high** profit
+* Countermeasures that follow news and **trends**
+* Multiple machine/deep learning **models**
+* For some stocks decline, **high** loss.
+* Needs 30m interval data and make signals every 30m.
+
+### If the stock is rising
+![](./resources/neo-rise.png)
+### If the stock is falling
+![](./resources/neo-decline.png)
+
+
+## Compound strategy
+
+* Lower plunge damage  
+* Higher profit on some stocks
+* Needs 30m interval data, but trades once a day.
+
+### If the stock is rising
+![](./resources/compound-rise.png)
+### If the stock is falling
+![](./resources/compound-decline.png)
+
+## Compare Pair Trade strategies
+
+When rising during 2024-06-11 ~ 2024-01-01, Stock pair 329180.KS and 009540.KS
+-----------
+
+| strategy | trades | end | best | worst | sharp |
+|----------|--------|-----|------|-------|-------|
+|Neo|140|48.56%|53.45%|-0.79%|1.29|
+|Compound|9|54.80%|59.65%|-0.85%|1.31|
+
+When falling during 2024-06-11 ~ 2024-01-01, Stock pair 042700.KS and 000660.KS
+-----------
+
+| strategy | trades | end | best | worst | sharp |
+|----------|--------|-----|------|-------|-------|
+|Neo|14|-28.78%|2.49%|-31.23%|-1.12|
+|Compound|10|-14.66%|7.54%|-14.66%|0.36|
+
+### Results
+
+Overall, the Compound strategy of day trading appears to be more stable. However, the Neo strategy appears to be better as cash continues to increase by reflecting market conditions through various models.
 
 # Stocks that 'Corr High Finder' Found (ONLY KOSPI STOCKS)
 

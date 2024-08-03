@@ -9,7 +9,7 @@ import utils
 from scipy.optimize import minimize
 from scipy.stats import norm
 
-class StarInvest(pair_trade_strategy.PairTradeStrategy):
+class CompoundInvest(pair_trade_strategy.PairTradeStrategy):
     def _simulate_cir_process(self, theta, mu, sigma, X0, T, dt, N):
         t = np.linspace(0, T, N)
         X = np.zeros(N)
@@ -48,13 +48,13 @@ class StarInvest(pair_trade_strategy.PairTradeStrategy):
         limit = 10000000000
         bt = backtester.Backtester(self.symbols, start, end, interval, limit, 0.0025, self._process_data)
         bar = 0
-        interval_minutes = 5
+        interval_minutes = 30
         period_minutes = 380
         N = period_minutes // interval_minutes
         dt = interval_minutes / 60
         T = period_minutes / 60
         i = 0
-
+        refresh = 24
         theta1_opt, theta2_opt = 0.7, 0.7
         mu = 0.5
         sigma = 0.05
@@ -71,37 +71,39 @@ class StarInvest(pair_trade_strategy.PairTradeStrategy):
             sigma_series = utils.get_pct_changes(bt.portfolio_evaluates).rolling(window=12).std()
             if len(sigma_series) > N:
                 sigma = sigma_series.iloc[-1]
-            if bar > N and bar % N == 0:
+            if bar > N and bar % refresh == 0:
                 p1 = data["norm_price_series"][self.symbols[0]+"_Price"].iloc[bar-N:bar]
                 p2 = data["norm_price_series"][self.symbols[1]+"_Price"].iloc[bar-N:bar]
                 spread = p1 - p2
                 mu = np.mean(spread)
-                initial_params = [0.1, 0.1, 0.03, 0.02]
-                result1 = minimize(self._log_likelihood, initial_params, args=(p1, spread, dt), method='L-BFGS-B', bounds=((0, None), (0, None), (0, None), (0, None)))
-                result2 = minimize(self._log_likelihood, initial_params, args=(p2, spread, dt), method='L-BFGS-B', bounds=((0, None), (0, None), (0, None), (0, None)))
+                result1 = minimize(self._log_likelihood, [0.1, 0.1, 0.05, 0.01], args=(p1, spread, dt), method='L-BFGS-B', bounds=((0, None), (0, None), (0, None), (0, None)))
+                result2 = minimize(self._log_likelihood, [0.1, 0.1, 0.05, 0.01], args=(p2, spread, dt), method='L-BFGS-B', bounds=((0, None), (0, None), (0, None), (0, None)))
                 kappa0_opt, kappa1_opt, theta1_opt, sigma_opt = result1.x
                 kappa0_opt, kappa1_opt, theta2_opt, sigma_opt = result2.x
             
-            if bar % N == 0:
                 X00 = data["norm_price"][self.symbols[0]+"_Price"]
                 X01 = data["norm_price"][self.symbols[1]+"_Price"]
                 t, price1 = self._simulate_cir_process(theta1_opt, mu, sigma, X00, T, dt, N)
                 t, price2 = self._simulate_cir_process(theta2_opt, mu, sigma, X01, T, dt, N)
+
                 buy_list, sell_list, alpha_ratio = self.OU.get_signal(self.symbols[0], self.symbols[1], pd.Series(price1), pd.Series(price2))
                 for b in buy_list:
                     trade_dict[b] += alpha_ratio
                 for s in sell_list:
                     trade_dict[s] -= alpha_ratio
-            
-            action_dicts = [utils.preprocess_weights({k: v for k, v in trade_dict.items() if v > 0}, bt.current_amount, limit), 
-                            {k: v for k, v in trade_dict.items() if v < 0}]
-            
-            for stock, alpha in action_dicts[1].items(): # sell
-                alpha_ratio = abs(alpha)
-                bt.sell(stock, alpha_ratio)
-            for stock, alpha in action_dicts[0].items(): # buy
-                alpha_ratio = abs(alpha)
-                bt.buy(stock, alpha_ratio)    
+                action_dicts = [utils.preprocess_weights({k: v for k, v in trade_dict.items() if v > 0}, bt.current_amount, limit), 
+                                {k: v for k, v in trade_dict.items() if v < 0}]
+                
+                for stock, alpha in action_dicts[1].items(): # sell
+                    alpha_ratio = abs(alpha)
+                    if alpha_ratio < 0.1:
+                        continue
+                    bt.sell(stock, alpha_ratio)
+                for stock, alpha in action_dicts[0].items(): # buy
+                    alpha_ratio = abs(alpha)
+                    if alpha_ratio < 0.1:
+                        continue
+                    bt.buy(stock, alpha_ratio)    
             
             bar += 1
             
