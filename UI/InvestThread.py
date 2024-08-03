@@ -28,9 +28,10 @@ class InvestThread(QThread):
             self.invest_logs.append(text)
             self.update_signal.emit(f"{title} {self.invester.symbols} {datetime.now()}")
     
-    def __init__(self, news_reader, interval, process_name, invester, invest_logs, preset):
+    def __init__(self, interval, process_name, invester, invest_logs, preset, strategy):
         super().__init__()
-        self.news_reader = news_reader
+        self.strategy = strategy
+        self.news_reader = None
         self.interval = interval
         self.process_name = process_name
         self.invester = invester
@@ -59,11 +60,15 @@ class InvestThread(QThread):
     def run(self):
         start_time = datetime.strptime("09:00", "%H:%M").time()
         end_time = datetime.strptime("15:30", "%H:%M").time()
-        interval_minutes = [0, 29]
-        if self.interval == '1h':
-            interval_minutes = [0]
-        elif self.interval == '30m':
-            interval_minutes = [0, 29]
+        action_intervals = []
+        if self.strategy == "Neo":
+            action_intervals = [0, 29]
+            if self.interval == '1h':
+                action_intervals = [0]
+            elif self.interval == '30m':
+                action_intervals = [0, 29]
+        elif self.strategy == "Compound":
+            action_intervals = [12] #Hour
         
         watch_TP_interval_minutes = list(range(0, 60, 1))
         watch_SL_interval_minutes = list(range(0, 60, 1))
@@ -76,23 +81,27 @@ class InvestThread(QThread):
         while self._is_running:
             now = datetime.now()
             if start_time <= now.time() <= end_time:
-                if now.minute in interval_minutes and now.second == 1:
-                    self._invest_action()
-                    time.sleep(1)
+                if self.strategy == "Neo":
+                    if now.minute in action_intervals and now.second == 1:
+                        self._invest_action()
+                        time.sleep(1)
+                    if (now.minute in news_update_interval_minutes and now.second == 1):
+                        for symbol in self.invester.symbols:
+                            news = self.news_reader.today_only(self.news_reader.get_news_by_page(symbol[:6], 1))
+                            score = sum(self.news_reader.score(self.news_reader.analyze(self.news_reader.preprocess_x(news))))
+                            self._update_news_bias(symbol, score)
+                elif self.strategy == "Compound":
+                    if now.hour in action_intervals and now.minute == 1 and now.second == 1:
+                        self._invest_action()
+                        time.sleep(1)
                 
                 if now.minute in watch_TP_interval_minutes and now.second == 1 and self.watch_TP_flag:
                     sell_list = self.watcher.watch_TP(self.tp)
                     self._forced_sell(sell_list, 0.5, 'Take Profit')
-                
+                    
                 if now.minute in watch_SL_interval_minutes and now.second == 1 and self.watch_SL_flag:
                     sell_list = self.watcher.watch_SL(self.sl)
                     self._forced_sell(sell_list, 1, 'Stop Loss')
-                    
-                if now.minute in news_update_interval_minutes and now.second == 1:
-                    for symbol in self.invester.symbols:
-                        news = self.news_reader.today_only(self.news_reader.get_news_by_page(symbol[:6], 1))
-                        score = sum(self.news_reader.score(self.news_reader.analyze(self.news_reader.preprocess_x(news))))
-                        self._update_news_bias(symbol, score)
             time.sleep(1)
         
     def stop(self):

@@ -8,7 +8,7 @@ import math
 import pandas as pd
 import json
 
-from Strategy import Neo_invest
+from Strategy import Neo_invest, Compound_invest
 from UI import InvestThread, Presets
 from LM import news
 from Models import MC_VaR, CAPM
@@ -338,9 +338,9 @@ class TradingApp(QMainWindow):
     
     def _get_invester(self, symbols, client, nobacktest, only_backtest):
         strategy, ok = QInputDialog.getItem(self, "Select Strategy", "Choose a strategy.", [
-            "Neo"
+            "Neo", "Compound"
         ], 0, False)
-        invester = None
+        invester = None, ""
         if ok and strategy:
             if strategy == "Neo":
                 if self.news_reader == None:
@@ -351,10 +351,12 @@ class TradingApp(QMainWindow):
                         QMessageBox.information(self, "Wait for a moment", "Training news model. It needs 20m.")
                         self.news_reader.train_model()
                 invester = Neo_invest.NeoInvest(symbols[0], symbols[1], client, nobacktest=nobacktest, only_backtest=only_backtest)
+            elif strategy == "Compound":
+                invester = Compound_invest.CompoundInvest(symbols[0], symbols[1], client, nobacktest=nobacktest, only_backtest=only_backtest)
         else:
             QMessageBox.information(self, "Warn", "Select a strategy.")
-            return None
-        return invester
+            return None, ""
+        return invester, strategy
     
     def backtest(self):
         
@@ -362,7 +364,7 @@ class TradingApp(QMainWindow):
         if preset == {}:
             return
         symbols = [preset['symbol1'], preset['symbol2']]
-        invester = self._get_invester(symbols, None, nobacktest=False, only_backtest=True)
+        invester, invester_name = self._get_invester(symbols, None, nobacktest=False, only_backtest=True)
         if invester == None:
             return
         
@@ -388,11 +390,13 @@ class TradingApp(QMainWindow):
             return
         
         client = kis.KISClient(symbols, preset['max_operate_amount'], nolog=False)
-        invester = self._get_invester(symbols, client, nobacktest=True, only_backtest=False)
+        invester, invester_name = self._get_invester(symbols, client, nobacktest=True, only_backtest=False)
         if invester == None:
             return
         self.process_list_widget.addItem(process_name)
-        worker_thread = InvestThread.InvestThread(self.news_reader, interval, process_name, invester, self.invest_logs, preset)
+        worker_thread = InvestThread.InvestThread(interval, process_name, invester, self.invest_logs, preset, invester_name)
+        if invester_name == "Neo":
+            worker_thread.news_reader = self.news_reader
         worker_thread.update_signal.connect(self.update_invest_log_list)
         worker_thread.start()
         self.processes[process_name] = worker_thread
