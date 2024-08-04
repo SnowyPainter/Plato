@@ -131,7 +131,7 @@ class NeoInvest(pair_trade_strategy.PairTradeStrategy):
     def backtest(self, start='2023-01-01', end='2024-01-01', interval='1h', print_result=True, seperated=False, show_plot=True, show_result=True, show_only_text=False):
         print(f"Backtest for {self.symbols} | {start} ~ {end} *{interval}")
         limit = 1000000000
-        bt = backtester.Backtester(self.symbols, start, end, interval, limit, 0.0025, self._process_data)
+        self.bt = backtester.Backtester(self.symbols, start, end, interval, limit, 0.0025, self._process_data)
         bar = 0
         hdt = (2 if interval == '30m' else 1)
         day_t = 6 * hdt
@@ -141,11 +141,11 @@ class NeoInvest(pair_trade_strategy.PairTradeStrategy):
             
         for symbol in self.symbols:
             volatilities[symbol] = []
-            volatilities[symbol].append(self.volatility_predictors[symbol].predict(bt.raw_data[0:day_t]))
+            volatilities[symbol].append(self.volatility_predictors[symbol].predict(self.bt.raw_data[0:day_t]))
             volatility_w[symbol] = 1
         
         while True:
-            raw, data, today = bt.go_next()
+            raw, data, today = self.bt.go_next()
             if data == -1:
                 break
             
@@ -194,7 +194,7 @@ class NeoInvest(pair_trade_strategy.PairTradeStrategy):
             for symbol in self.symbols:
                 trade_dict[symbol] += (serial_signal[symbol] + tech_signal[symbol] / 2)
             
-            cash = bt.current_amount
+            cash = self.bt.current_amount
             action_dicts = [utils.preprocess_weights({k: self._vw_apply(k, v) for k, v in trade_dict.items() if v > 0}, cash, limit), 
                             {k: self._vw_apply(k, v) for k, v in trade_dict.items() if v < 0}]
             
@@ -206,7 +206,7 @@ class NeoInvest(pair_trade_strategy.PairTradeStrategy):
                 if alpha_ratio <= 0.05:
                     alpha_ratio = 0.1
                 
-                bt.sell(stock, alpha_ratio)
+                self.bt.sell(stock, alpha_ratio)
             for stock, alpha in action_dicts[0].items(): # buy
                 if stock in not_trade:
                     continue
@@ -216,21 +216,20 @@ class NeoInvest(pair_trade_strategy.PairTradeStrategy):
                 if alpha_ratio <= 0.05:
                     alpha_ratio = 0.1
 
-                bt.buy(stock, alpha_ratio)
+                self.bt.buy(stock, alpha_ratio)
 
-            bt.print_stock_weights()
+            self.bt.print_stock_weights()
             bar += 1
         
         if show_only_text:
-            return bt.print_result('for_show')
+            return self.bt.print_result('for_show')
         else:
             if print_result:
                 if show_result:
-                    bt.print_result()
+                    self.bt.print_result()
                 if show_plot:
-                    bt.plot_result() 
+                    self.bt.plot_result() 
             else:   
                 if seperated:
-                    return bt.print_result(fname='sum')
-            return bt.print_result(fname='return')
-        
+                    return self.bt.print_result(fname='sum')
+            return self.bt.print_result(fname='return')

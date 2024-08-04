@@ -108,7 +108,12 @@ class Backtester:
                 'VaR' : VaR
             }
         elif fname == 'sum':
-            return self.portfolio_returns
+            return {
+                "index": self.raw_data.index,
+                "evlus": self.portfolio_evaluates, 
+                "returns": self.portfolio_returns,
+                "ph": self.profit_history
+            }
         elif fname == 'for_show':
             return text
         else:
@@ -245,3 +250,39 @@ class Backtester:
                 "profit" : profit
             }, index=self.raw_data.index)])
             self.trade_count += 1
+            
+def mutil_bt_plot(index, evlus, ph, title=''):
+    ax = plt.subplot()
+
+    evlus[np.isnan(evlus)] = 0.0
+    mean = np.mean(evlus)
+    std = np.std(evlus)
+    norm_evalu = (evlus - mean) / std
+
+    ax.plot(index, norm_evalu, 'k-', label='Evaluated Asset Value')
+    ax.set_ylabel('Evaluated Asset Value', color='k')
+
+    ph_dates = index[:len(ph)]
+    ph_colors = ['green' if value >= 0 else 'red' for value in ph]
+    ax1 = ax.twinx()
+    for i in range(len(ph_dates) - 1):
+        ax1.fill_between(ph_dates[i:i + 2], [0, 0], [ph[i], ph[i + 1]], step='post', color=ph_colors[i], alpha=0.5)
+    
+    ax.legend(loc='upper right')
+    ax1.legend(loc='upper left')
+    
+    plt.title(f'{title}')
+    plt.show()
+
+def multi_bt_result_print(returns, evlus, init_amount):
+    returns = np.array(returns)
+    returns[np.isnan(returns)] = 0.0
+    end_return, best_return, worst_return, sharp_ratio, VaR = utils.get_bt_result(returns, evlus, init_amount)
+    VaR = round(VaR, 2)
+    text = ""
+    text += f"End Return : {end_return * 100:.2f} % \n"
+    text += f"Worst ~ Best return {worst_return * 100:.2f} ~ {best_return * 100:.2f} % \n\n"
+    text += f"Sharp Ratio : {sharp_ratio :.4f}\n"
+    text += f"VaR : {utils.korean_currency_format(VaR)} / {utils.korean_currency_format(init_amount)}\n\n"
+    print(text)
+    return text

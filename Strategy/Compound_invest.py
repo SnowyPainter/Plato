@@ -98,7 +98,7 @@ class CompoundInvest(pair_trade_strategy.PairTradeStrategy):
         
     def backtest(self, start='2024-06-01', end='2024-08-01', interval='30m', print_result=True, seperated=False, show_plot=True, show_result=True, show_only_text=False):
         limit = 10000000000
-        bt = backtester.Backtester(self.symbols, start, end, interval, limit, 0.0025, self._process_data)
+        self.bt = backtester.Backtester(self.symbols, start, end, interval, limit, 0.0025, self._process_data)
         bar = 0
         interval_minutes = 30
         period_minutes = 380
@@ -111,7 +111,7 @@ class CompoundInvest(pair_trade_strategy.PairTradeStrategy):
         mu = 0.5
         
         while True:
-            raw, data, today = bt.go_next()
+            raw, data, today = self.bt.go_next()
             if data == -1:
                 break
             
@@ -136,33 +136,33 @@ class CompoundInvest(pair_trade_strategy.PairTradeStrategy):
                     trade_dict[b] += alpha_ratio
                 for s in sell_list:
                     trade_dict[s] -= alpha_ratio
-                action_dicts = [utils.preprocess_weights({k: v for k, v in trade_dict.items() if v > 0}, bt.current_amount, limit), 
+                action_dicts = [utils.preprocess_weights({k: v for k, v in trade_dict.items() if v > 0}, self.bt.current_amount, limit), 
                                 {k: v for k, v in trade_dict.items() if v < 0}]
                 
                 for stock, alpha in action_dicts[1].items(): # sell
                     alpha_ratio = abs(alpha)
                     if alpha_ratio < 0.1:
                         continue
-                    bt.sell(stock, alpha_ratio)
+                    self.bt.sell(stock, alpha_ratio)
                 for stock, alpha in action_dicts[0].items(): # buy
                     alpha_ratio = abs(alpha)
                     if alpha_ratio < 0.1:
                         continue
-                    bt.buy(stock, alpha_ratio)    
+                    self.bt.buy(stock, alpha_ratio)    
             
             bar += 1
             
-            bt.print_stock_weights()
+            self.bt.print_stock_weights()
             
         if show_only_text:
-            return bt.print_result('for_show')
+            return self.bt.print_result('for_show')
         else:
             if print_result:
                 if show_result:
-                    bt.print_result()
+                    self.bt.print_result()
                 if show_plot:
-                    bt.plot_result() 
-            else:   
+                    self.bt.plot_result() 
+            else: 
                 if seperated:
-                    return bt.print_result(fname='sum')
-            return bt.print_result(fname='return')
+                    return self.bt.print_result(fname='sum')
+            return self.bt.print_result(fname='return')
