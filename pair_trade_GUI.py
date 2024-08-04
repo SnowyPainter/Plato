@@ -375,7 +375,7 @@ class TradingApp(QMainWindow):
         start, end = self.get_bt_term("Backtest")
         if start == '' or end == '':
             return
-        result = invester.backtest(start, end, show_plot=True, print_result=True, show_result=True, show_only_text=False)
+        result = invester.backtest(start, end, show_only_text=True, show_plot=True)
         self.bt_result_texts.append(result)
         self.bt_result_list.addItem(f"{symbols} | {start} ~ {end}")
         QMessageBox.information(self, "Done", "Backtesting Done")

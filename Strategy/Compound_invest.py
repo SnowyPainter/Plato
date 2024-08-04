@@ -153,8 +153,12 @@ class CompoundInvest(pair_trade_strategy.PairTradeStrategy):
             bar += 1
             
             self.bt.print_stock_weights()
-            
+        
         if show_only_text:
+            if show_plot:
+                self.bt.plot_result()
+            if show_result:
+                self.bt.print_result()
             return self.bt.print_result('for_show')
         else:
             if print_result:
