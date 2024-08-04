@@ -136,8 +136,13 @@ class TradingApp(QMainWindow):
         initial_investment = 0
         for name, process in self.processes.items():
             initial_investment += process.invester.client.max_operate_amount
-            for symbol, vol in process.invester.volatilities.items():
-                vols[symbol] = (sum(vol) / len(vol))
+            if process.strategy == "Neo":
+                for symbol, vol in process.invester.volatilities.items():
+                    vols[symbol] = (sum(vol) / len(vol))
+        
+        if len(vols) == 0:
+            return
+        
         var = MC_VaR.get_MC_VaR(initial_investment, list(vols.values()))
                                 
         self.var_text.setText(f"VaR 5%: {utils.korean_currency_format(round(var, 2))}")
