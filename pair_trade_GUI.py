@@ -144,6 +144,10 @@ class TradingApp(QMainWindow):
         
     def show_proc_interact_menu(self, position):
         selected_item = self.process_list_widget.itemAt(position)
+        if not selected_item.text() in self.processes:
+            return
+        process = self.processes[selected_item.text()]
+
         if selected_item is not None:
             menu = QMenu()
             cancel_action = QAction('Cancel', self)
@@ -153,12 +157,12 @@ class TradingApp(QMainWindow):
             update_moa = QAction('Update MOA', self)
             update_moa.triggered.connect(lambda: self.update_moa(selected_item))
             menu.addAction(update_moa)
+
+            if process.strategy == "Neo":
+                news_evlu = QAction("Current News", self)
+                news_evlu.triggered.connect(lambda: self.show_news_evluate(selected_item))
+                menu.addAction(news_evlu)
             
-            news_evlu = QAction("Current News", self)
-            news_evlu.triggered.connect(lambda: self.show_news_evluate(selected_item))
-            menu.addAction(news_evlu)
-            
-            process = self.processes[selected_item.text()]
             TP_checkbox_action = QWidgetAction(self)
             self.TP_checkbox = QCheckBox('Sell TP')
             self.TP_checkbox.stateChanged.connect(self.watch_tp_checkbox_state_changed)
