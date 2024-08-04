@@ -34,6 +34,8 @@ class Backtester:
         self.portfolio_evaluates = []
         self.portfolio_returns = []
         self.protfolio_stock_profits = {}
+        self.portfolio_infos = {f"{symbol}_Weight": [] for symbol in symbols}
+        self.profit_history = []
         for symbol in symbols:
             self.protfolio_stock_profits[symbol] = []
         self.price = {}
@@ -139,6 +141,17 @@ class Backtester:
         ax2.plot(self.raw_data.index, norm_evalu, 'k-', label='Evaluated Asset Value')
         ax2.set_ylabel('Evaluated Asset Value', color='k')
         
+        ax3 = ax2.twinx()
+        for symbol in self.symbols:
+            ax3.plot(self.raw_data.index, self.portfolio_infos[f"{symbol}_Weight"], label=f"{symbol}")
+        
+        ph_dates = self.raw_data.index[:len(self.profit_history)]
+        ph_colors = ['green' if value >= 0 else 'red' for value in self.profit_history]
+        ax4 = ax2.twinx()
+        for i in range(len(ph_dates) - 1):
+            ax4.fill_between(ph_dates[i:i + 2], [0, 0], [self.profit_history[i], self.profit_history[i + 1]], step='post', color=ph_colors[i], alpha=0.5)
+        
+        
         signal_data = []
         scatter_data = []
         for action, marker, color in zip(['buy', 'sell'], ['^', 'v'], ['green', 'red']):
@@ -165,7 +178,9 @@ class Backtester:
         fig.tight_layout()
         ax1.legend(loc='upper left')
         ax2.legend(loc='upper right')
-
+        ax3.legend(loc='lower right')
+        ax4.legend(loc='upper left')
+        
         plt.title('Stock Price, Trade Signals, and Asset Value Over Time')
         plt.show()
     
@@ -176,7 +191,19 @@ class Backtester:
         for symbol in self.symbols:
             self.price[symbol] = self.raw_data[symbol+"_Price"].iloc[self.bar]
             self.evaluated_amount += self.units[symbol] * self.price[symbol]
+        
+        total_units = sum(self.units.values())
+        for stock, unit in self.units.items():
+            if total_units > 0:
+                weight = unit / total_units * 100
+            else:
+                weight = 0
+            self.portfolio_infos[f"{stock}_Weight"].append(weight)
         self.portfolio_evaluates.append(self.evaluated_amount)
+        
+        if len(self.portfolio_evaluates) > 1:
+            self.profit_history.append((self.portfolio_evaluates[-1] - self.portfolio_evaluates[-2]) / self.portfolio_evaluates[-1])
+        
         self.portfolio_returns.append((self.evaluated_amount - self.init_amount) / self.init_amount)
         self.bar += 1
         return self.raw_data, self.data_proc_func(self.raw_data, utils.normalize(self.raw_data), self.bar - 1), self.raw_data.index[self.bar - 1]

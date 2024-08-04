@@ -232,5 +232,5 @@ class NeoInvest(pair_trade_strategy.PairTradeStrategy):
             else:   
                 if seperated:
                     return bt.print_result(fname='sum')
-                return bt.print_result(fname='return')
+            return bt.print_result(fname='return')
         

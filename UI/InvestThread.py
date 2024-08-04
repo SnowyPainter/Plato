@@ -61,6 +61,7 @@ class InvestThread(QThread):
         start_time = datetime.strptime("09:00", "%H:%M").time()
         end_time = datetime.strptime("15:30", "%H:%M").time()
         action_intervals = []
+        data_append_intervals = []
         if self.strategy == "Neo":
             action_intervals = [0, 29]
             if self.interval == '1h':
@@ -69,7 +70,8 @@ class InvestThread(QThread):
                 action_intervals = [0, 29]
         elif self.strategy == "Compound":
             action_intervals = [12] #Hour
-        
+            data_append_intervals = [0, 30]
+            
         watch_TP_interval_minutes = list(range(0, 60, 1))
         watch_SL_interval_minutes = list(range(0, 60, 1))
         news_update_interval_minutes = list(range(0, 60, 10))
@@ -91,6 +93,8 @@ class InvestThread(QThread):
                             score = sum(self.news_reader.score(self.news_reader.analyze(self.news_reader.preprocess_x(news))))
                             self._update_news_bias(symbol, score)
                 elif self.strategy == "Compound":
+                    if now.minute in data_append_intervals and now.second == 1:
+                        self.invester.append_current_data()
                     if now.hour in action_intervals and now.minute == 1 and now.second == 1:
                         self._invest_action()
                         time.sleep(1)
