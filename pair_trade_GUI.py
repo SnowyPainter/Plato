@@ -374,21 +374,18 @@ class TradingApp(QMainWindow):
         preset = self._get_preset()
         if preset == {}:
             return
-        
+        interval = '30m'
+        process_name = f"{preset['title']}_{interval}"
         if process_name in self.processes:
             QMessageBox.warning(self, "Warning", "Process already scheduled for these symbols.")
             return
         symbols = preset['symbols']
-        interval = '30m'
-        
         client = kis.KISClient(symbols, preset['max_operate_amount'], nolog=False)
         invester, invester_name = self._get_invester(symbols, client, nobacktest=True, only_backtest=False, only=preset['strategy'])
-            
+        
         if invester == None:
             return
-        
-        process_name = f"{symbols[0]}_{symbols[1]}_{interval}"
-        
+
         self.process_list_widget.addItem(process_name)
         worker_thread = InvestThread.InvestThread(interval, process_name, invester, self.invest_logs, preset, invester_name)
         if invester_name == "Neo":

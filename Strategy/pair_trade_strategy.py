@@ -50,6 +50,7 @@ class PairTradeStrategy(ABC):
 
     def get_information(self):
         text = f"MOA: {self.client.max_operate_amount}\n"
+        text += f"Operating Stocks: {self.symbols}\n"
         text += f"Stocks: {self.client.stocks_qty}\n"
         text += f"AVGP: {self.client.stocks_avg_price}\n"
         text += f"Cash: {self.client.max_operate_cash()}\n"
