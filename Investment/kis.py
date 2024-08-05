@@ -140,7 +140,8 @@ class KISClient:
         evlu = 0
         for symbol in self.symbols:
             code = symbol[:6]
-            evlu += self.stocks_qty[code] * self.current_price[code]    
+            if code in self.stocks_qty:
+                evlu += self.stocks_qty[code] * self.current_price[code]    
         evlu += self.max_operate_cash()
         return evlu
     

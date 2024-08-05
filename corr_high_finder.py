@@ -59,12 +59,9 @@ def save_results(results, fname):
     with open(f"{fname}.txt", 'w') as f:
         f.write(text)
 
-from Investment import kis
-
 def run_backtest(pair, start, end, results):
     name = pair[0] + " " + pair[1]
-    client = kis.KISClient([pair[0], pair[1]], 1000000000, nolog=True)
-    c = Compound_invest.CompoundInvest(pair[0], pair[1], client, nobacktest=False, only_backtest=True)
+    c = Compound_invest.CompoundInvest(pair[0], pair[1], None, nobacktest=False, only_backtest=True)
     result = c.backtest(start, end, print_result=False)
     results[name] = result
 

@@ -100,7 +100,7 @@ class SavePresetDialog(QDialog):
             "enable_takeprofit": self.takeprofit_check.isChecked()
         }
         if strategy == "Pair Trade":
-            preset['symbols'] [self.symbol1_input.text(), self.symbol2_input.text()]
+            preset['symbols'] = [self.symbol1_input.text(), self.symbol2_input.text()]
         elif strategy == "Momentum":
             preset['symbols'] = [self.symbol_input.text()]
     

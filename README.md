@@ -59,26 +59,6 @@ When falling during 2024-06-11 ~ 2024-01-01, Stock pair 042700.KS and 000660.KS
 
 Overall, the Compound strategy of day trading appears to be more stable. However, the Neo strategy appears to be better as cash continues to increase by reflecting market conditions through various models.
 
-# Stocks that 'Corr High Finder' Found (ONLY KOSPI STOCKS)
-
-**Term: 2024-07-01 ~ 2024-08-02 by 1h**  
-**Used Neo Strategy**
-
-## Best Sharp
-
-| stock pair | sharp | return | theme |
-|------------|-------|--------|-------|
-|010140.KS, 010620.KS|1.24|17%~21%|ship|
-|047040.KS, 130660.KS|1.58|29%~62%|building|
-
-## Best Return
-
-| stock pair | sharp | return | theme |
-|------------|-------|--------|-------|
-|329180.KS, 009540.KS|1.00|39%~41%|ship|
-|006360.KS, 375500.KS|1.07|30%~31%|building
-|009540.KS, 012450.KS|0.91|38%~38%|military|
-
 # Utils
 
 ## Preprocess Weights

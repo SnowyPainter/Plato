@@ -85,12 +85,14 @@ class CompoundInvest(pair_trade_strategy.PairTradeStrategy):
             alpha_ratio = abs(alpha)
             if alpha_ratio < 0.1:
                 continue
+            qty = 0
             qty = self.client.sell(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)
             text += f"Sell {stock}, ratio: {alpha_ratio :.3f}, qty: {qty}\n"
         for stock, alpha in action_dicts[0].items(): # buy
             alpha_ratio = abs(alpha)
             if alpha_ratio < 0.1:
                 continue
+            qty = 0
             qty = self.client.buy(stock, self.current_data["price"][stock+"_Price"], alpha_ratio)   
             text += f"Buy {stock}, ratio: {alpha_ratio :.3f}, qty: {qty}\n"
         print(text)

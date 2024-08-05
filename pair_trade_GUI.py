@@ -395,25 +395,29 @@ class TradingApp(QMainWindow):
         self.processes[process_name] = worker_thread
     
     def recommend_stocks(self):
-        processes = []
-        result_batch = []
-        QMessageBox.information(self, "Warn", "This process needs 30m~1h.")
-        for theme_name, theme in utils.THEMES.items():
-            pairs = corr_high_finder.find_stocks_to_invest(theme)
-            if len(pairs) == 0:
-                continue
+        def chf(pairs, fname):
+            processes = []
+            result_batch = []
             manager = mp.Manager()
             results = manager.dict()
-            result_batch.append(results)
             start, end = utils.today_and_month_ago()
-
             for pair in pairs:
                 p = mp.Process(target=corr_high_finder.run_backtest, args=(pair, start, end, results))
                 processes.append(p)
                 p.start()
             for p in processes:
                 p.join()
-            corr_high_finder.save_results(results, theme_name)
+            corr_high_finder.save_results(results, fname=fname)
+        processes = []
+        result_batch = []
+        QMessageBox.information(self, "Warn", "This process needs 30m~1h.")
+        for theme_name, theme in utils.THEMES.items():
+            start, end = utils.today_and_month_ago()
+            pairs = corr_high_finder.filter_pairs(corr_high_finder.get_high_corr_pairs(start, end, theme))
+            if len(pairs) == 0:
+                continue
+            chf(pairs, theme_name)
+            
         QMessageBox.information(self, "Done", "Recommendation finishied")
 
 if __name__ == '__main__':
