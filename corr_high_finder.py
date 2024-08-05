@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import calendar
 import json
 
-from Strategy import Neo_invest
+from Strategy import Compound_invest
 
 def get_high_corr_pairs(start, end, themes):
     pairs = []
@@ -64,8 +64,8 @@ from Investment import kis
 def run_backtest(pair, start, end, results):
     name = pair[0] + " " + pair[1]
     client = kis.KISClient([pair[0], pair[1]], 1000000000, nolog=True)
-    neo = Neo_invest.NeoInvest(pair[0], pair[1], client, only_backtest=True)
-    result = neo.backtest(start, end, print_result=False)
+    c = Compound_invest.CompoundInvest(pair[0], pair[1], client, nobacktest=False, only_backtest=True)
+    result = c.backtest(start, end, print_result=False)
     results[name] = result
 
 def find_stocks_to_invest(themes):
