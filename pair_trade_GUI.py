@@ -323,10 +323,14 @@ class TradingApp(QMainWindow):
             return {}
         return preset
     
-    def _get_invester(self, symbols, client, nobacktest, only_backtest):
-        strategy, ok = QInputDialog.getItem(self, "Select Strategy", "Choose a strategy.", [
-            "Neo", "Compound"
-        ], 0, False)
+    def _get_invester(self, symbols, client, nobacktest, only_backtest, only=''):
+        if only == 'Pair Trade':
+            options = ["Neo", "Compound"]
+        elif only == 'Momentum':
+            options = []
+        else:
+            options = []
+        strategy, ok = QInputDialog.getItem(self, "Select Strategy", "Choose a strategy.", options, 0, False)
         invester = None, ""
         if ok and strategy:
             if strategy == "Neo":
@@ -350,8 +354,10 @@ class TradingApp(QMainWindow):
         preset = self._get_preset()
         if preset == {}:
             return
-        symbols = [preset['symbol1'], preset['symbol2']]
-        invester, invester_name = self._get_invester(symbols, None, nobacktest=False, only_backtest=True)
+        
+        symbols = preset['symbols']
+        invester, invester_name = self._get_invester(symbols, None, nobacktest=False, only_backtest=True, only=preset['strategy'])
+
         if invester == None:
             return
         
@@ -368,18 +374,21 @@ class TradingApp(QMainWindow):
         preset = self._get_preset()
         if preset == {}:
             return
-        symbols = [preset['symbol1'], preset['symbol2']]
-        interval = '30m'
-        process_name = f"{symbols[0]}_{symbols[1]}_{interval}"
         
         if process_name in self.processes:
             QMessageBox.warning(self, "Warning", "Process already scheduled for these symbols.")
             return
+        symbols = preset['symbols']
+        interval = '30m'
         
         client = kis.KISClient(symbols, preset['max_operate_amount'], nolog=False)
-        invester, invester_name = self._get_invester(symbols, client, nobacktest=True, only_backtest=False)
+        invester, invester_name = self._get_invester(symbols, client, nobacktest=True, only_backtest=False, only=preset['strategy'])
+            
         if invester == None:
             return
+        
+        process_name = f"{symbols[0]}_{symbols[1]}_{interval}"
+        
         self.process_list_widget.addItem(process_name)
         worker_thread = InvestThread.InvestThread(interval, process_name, invester, self.invest_logs, preset, invester_name)
         if invester_name == "Neo":

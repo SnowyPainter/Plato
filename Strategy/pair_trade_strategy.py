@@ -45,7 +45,8 @@ class PairTradeStrategy(ABC):
         start, end, interval = utils.today_before(50), utils.today(), '30m'
         self.raw_data = self._create_init_data(self.symbols, start, end, interval)
         self.bar = 0
-        self.evlus = [self.client.calculate_evaluated()]
+        if not self.client == None:
+            self.evlus = [self.client.calculate_evaluated()]
 
     def get_information(self):
         text = f"MOA: {self.client.max_operate_amount}\n"

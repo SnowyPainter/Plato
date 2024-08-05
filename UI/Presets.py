@@ -2,7 +2,7 @@ import sys
 import os
 import json
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QPushButton, QVBoxLayout, QLabel,
+    QApplication, QWidget, QPushButton, QVBoxLayout, QLabel, QComboBox,
     QLineEdit, QCheckBox, QDialog, QMessageBox, QListWidget, QInputDialog
 )
 
@@ -13,22 +13,22 @@ class SavePresetDialog(QDialog):
         self.setWindowTitle("Create Preset")
 
         self.layout = QVBoxLayout()
-
+        self.dynamic_layout = QVBoxLayout()
+        self.combo_box = QComboBox()
+        self.combo_box.addItem("Select Preset Style for Strategy")
+        self.combo_box.addItem("Pair Trade")
+        self.combo_box.addItem("Momentum")
+        self.combo_box.currentIndexChanged.connect(self.update_ui)
+        self.layout.addWidget(self.combo_box)
+        
         self.title_label = QLabel("Title:")
         self.title_input = QLineEdit()
         self.layout.addWidget(self.title_label)
         self.layout.addWidget(self.title_input)
 
-        self.symbol1_label = QLabel("Symbol 1:")
-        self.symbol1_input = QLineEdit()
-        self.layout.addWidget(self.symbol1_label)
-        self.layout.addWidget(self.symbol1_input)
-
-        self.symbol2_label = QLabel("Symbol 2:")
-        self.symbol2_input = QLineEdit()
-        self.layout.addWidget(self.symbol2_label)
-        self.layout.addWidget(self.symbol2_input)
-
+        tmp = QLabel("Details")
+        self.dynamic_layout.addWidget(tmp)
+        
         self.max_operate_label = QLabel("Max Operate Amount:")
         self.max_operate_input = QLineEdit()
         self.layout.addWidget(self.max_operate_label)
@@ -53,20 +53,57 @@ class SavePresetDialog(QDialog):
         self.save_button = QPushButton("Save")
         self.save_button.clicked.connect(self.save_preset)
         self.layout.addWidget(self.save_button)
-
+        self.save_button.setEnabled(False)
+        
+        self.layout.addLayout(self.dynamic_layout)
         self.setLayout(self.layout)
 
+    def update_ui(self):
+        for i in reversed(range(1, self.dynamic_layout.count())):
+            widget = self.dynamic_layout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+        
+        strategy = self.combo_box.currentText()
+        
+        if strategy == "Pair Trade":
+            self.save_button.setEnabled(True)
+            self.symbol1_label = QLabel("Symbol 1:")
+            self.symbol1_input = QLineEdit()
+            self.dynamic_layout.addWidget(self.symbol1_label)
+            self.dynamic_layout.addWidget(self.symbol1_input)
+
+            self.symbol2_label = QLabel("Symbol 2:")
+            self.symbol2_input = QLineEdit()
+            self.dynamic_layout.addWidget(self.symbol2_label)
+            self.dynamic_layout.addWidget(self.symbol2_input)
+        
+        elif strategy == "Momentum":
+            self.save_button.setEnabled(True)
+            self.symbol_label = QLabel("Symbol:")
+            self.symbol_input = QLineEdit()
+            self.dynamic_layout.addWidget(self.symbol_label)
+            self.dynamic_layout.addWidget(self.symbol_input)
+
+        else:
+            self.save_button.setEnabled(False)
+        
     def save_preset(self):
+        strategy = self.combo_box.currentText()
         preset = {
+            "strategy": strategy,
             "title": self.title_input.text(),
-            "symbol1": self.symbol1_input.text(),
-            "symbol2": self.symbol2_input.text(),
             "max_operate_amount": float(self.max_operate_input.text()),
             "stoploss": float(self.stoploss_input.text()),
             "takeprofit": float(self.takeprofit_input.text()),
             "enable_stoploss": self.stoploss_check.isChecked(),
             "enable_takeprofit": self.takeprofit_check.isChecked()
         }
+        if strategy == "Pair Trade":
+            preset['symbols'] [self.symbol1_input.text(), self.symbol2_input.text()]
+        elif strategy == "Momentum":
+            preset['symbols'] = [self.symbol_input.text()]
+    
         if not os.path.exists('./presets'):
             os.makedirs('./presets')
         if os.path.exists(f"./presets/{preset['title']}.json"):
