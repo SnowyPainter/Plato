@@ -77,6 +77,33 @@ class Backtester:
     def print_result(self, fname=''):
         self.portfolio_returns = np.array(self.portfolio_returns)
         self.portfolio_returns[np.isnan(self.portfolio_returns)] = 0.0
+        if len(self.portfolio_returns) <= 1:
+            if fname == '':
+                print('no data issue')
+                return
+            elif fname == 'return':
+                return {
+                    'sharp' : 0,
+                    'end' : [],
+                    'worst' : [],
+                    'best' : [],
+                    'trades' : 0,
+                    'VaR' : 0
+                }
+            elif fname == 'sum':
+                return {
+                    "index": self.raw_data.index,
+                    "evlus": self.portfolio_evaluates, 
+                    "returns": self.portfolio_returns,
+                    "ph": self.profit_history
+                }
+            elif fname == 'for_show':
+                return 'no data issue'
+            else:
+                with open(fname, 'w') as f:
+                    f.write("no data issue")
+                return
+
         end_return, best_return, worst_return, sharp_ratio, VaR = utils.get_bt_result(self.portfolio_returns, self.portfolio_evaluates, self.init_amount)
         VaR = round(VaR, 2)
         text = ""
