@@ -88,12 +88,16 @@ class KISClient:
         if self.keys == -1:
             self.logger.log("Failed to load ./settings/keys.ini")
             exit()
+            
+        self.broker = mojito.KoreaInvestment(api_key=self.keys["APIKEY"], api_secret=self.keys["APISECRET"], acc_no=self.keys["ACCNO"], mock=False)
         self.symbols = symbols
         self.max_operate_amount = max_operate_amount
         self.init_amount = self.max_operate_amount
         self.current_price = {}
+        for symbol in self.symbols:
+            code = symbol[:6]
+            self.get_price(code)
         
-        self.broker = mojito.KoreaInvestment(api_key=self.keys["APIKEY"], api_secret=self.keys["APISECRET"], acc_no=self.keys["ACCNO"], mock=False)
         self.stocks_qty, self.stocks_avg_price = self.get_acc_status()
         
         self.current_amount = self.max_operate_cash()
@@ -133,7 +137,12 @@ class KISClient:
         return pr, float(resp['output']['stck_hgpr']), float(resp['output']['stck_lwpr'])
     
     def calculate_evaluated(self):
-        return -1 * (self.max_operate_cash() - self.max_operate_amount)
+        evlu = 0
+        for symbol in self.symbols:
+            code = symbol[:6]
+            evlu += self.stocks_qty[code] * self.current_price[code]    
+        evlu += self.max_operate_cash()
+        return evlu
     
     def buy(self, symbol, price, ratio):
         price = int(price)

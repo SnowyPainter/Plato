@@ -82,14 +82,8 @@ class TradingApp(QMainWindow):
         self.var_button = QPushButton("VaR", self)
         self.var_button.clicked.connect(self.calculate_VaR)
         
-        self.capm_text = QLabel("CAPM NaN", self)
-        self.capm_button = QPushButton("CAPM", self)
-        self.capm_button.clicked.connect(self.calculate_CAPM)
-        
         self.help_layout.addWidget(self.var_text)
         self.help_layout.addWidget(self.var_button)
-        self.help_layout.addWidget(self.capm_text)
-        self.help_layout.addWidget(self.capm_button)
         
         self.etc_layout.addLayout(self.opt_layout, stretch=1)
         self.etc_layout.addLayout(self.text_layout, stretch=5)
@@ -107,45 +101,29 @@ class TradingApp(QMainWindow):
         dialog = Presets.SavePresetDialog(self)
         dialog.exec_()
     
-    def calculate_CAPM(self):
-        if len(self.processes) == 0:
-            return
-        
-        price_raw = pd.DataFrame()
-        price_columns = []
-        qty_weights = {}
-        for name, process in self.processes.items():
-            columns = []
-            for symbol in process.invester.symbols:
-                if symbol[:6] in process.invester.client.stocks_qty and process.invester.client.stocks_qty[symbol[:6]] > 0:
-                    c = symbol+"_Price"
-                    qty_weights[c] = process.invester.client.stocks_qty[symbol[:6]]
-                    price_columns.append(c)
-                    price_raw[c] = process.invester.raw_data[c]
-        
-        qty_sum = sum(qty_weights.values())
-        qty_weights = {stock: value / qty_sum for stock, value in qty_weights.items()}
-        
-        self.capm_text.setText(f"[1-] Exp %: {CAPM.CAPM(price_raw, utils.load_market_index(), price_columns, qty_weights) * 100 :.2f} %")
-    
     def calculate_VaR(self):
         if len(self.processes) == 0:
             return
         
-        vols = {}
+        VaRs = []
         initial_investment = 0
         for name, process in self.processes.items():
             initial_investment += process.invester.client.max_operate_amount
             if process.strategy == "Neo":
+                vols = {}
                 for symbol, vol in process.invester.volatilities.items():
                     vols[symbol] = (sum(vol) / len(vol))
-        
-        if len(vols) == 0:
+                var = MC_VaR.get_MC_VaR(process.invester.client.max_operate_amount, list(vols.values()))
+                VaRs.append(var)
+            if process.strategy == "Compound":
+                if len(process.invester.evlus) <= 1:
+                    continue
+                VaRs.append(MC_VaR.get_historical_VaR2(process.invester.evlus, process.invester.client.max_operate_amount, 1))
+
+        if len(VaRs) == 0:
             return
-        
-        var = MC_VaR.get_MC_VaR(initial_investment, list(vols.values()))
                                 
-        self.var_text.setText(f"VaR 5%: {utils.korean_currency_format(round(var, 2))}")
+        self.var_text.setText(f"{utils.korean_currency_format(round(sum(VaRs), 2))} / {utils.korean_currency_format(initial_investment)}")
         
     def show_proc_interact_menu(self, position):
         selected_item = self.process_list_widget.itemAt(position)
