@@ -60,7 +60,6 @@ class CompoundInvest(pair_trade_strategy.PairTradeStrategy):
         for symbol in self.symbols:
             trade_dict[symbol] = 0
         text = ''
-        
         p1 = self.current_data["norm_price_series"][self.symbols[0]+"_Price"].tail(self.N)
         p2 = self.current_data["norm_price_series"][self.symbols[1]+"_Price"].tail(self.N)
         mu = np.mean(p1-p2)

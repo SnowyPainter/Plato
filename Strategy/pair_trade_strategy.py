@@ -16,7 +16,7 @@ class PairTradeStrategy(ABC):
         LMA = norm_raw[price_columns].rolling(120).mean().iloc[bar]
         SMA = norm_raw[price_columns].rolling(25).mean().iloc[bar]
         return {
-            "norm_price_series" : utils.nplog(raw)[price_columns],
+            "norm_price_series" : norm_raw[price_columns],
             "norm_price" : norm_raw[price_columns].iloc[bar],
             "price" : raw[price_columns].iloc[bar],
             "LMA" : LMA,
@@ -62,7 +62,7 @@ class PairTradeStrategy(ABC):
     def append_current_data(self):
         df = self._get_current_prices(self.symbols)
         self.raw_data = pd.concat([self.raw_data, df])
-        self.current_data = self._process_data(self.raw_data, utils.normalize(self.raw_data), -1)
+        self.current_data = self._process_data(self.raw_data, utils.nplog(self.raw_data), -1)
         self.evlus.append(self.client.calculate_evaluated())
     
     @abstractmethod
