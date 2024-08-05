@@ -11,6 +11,8 @@ import os, re
 from Models import MC_VaR
 
 def merge_dfs(dfs):
+    if len(dfs) == 0:
+        return pd.DataFrame({})
     merged = dfs[0]
     for i in range(1, len(dfs)):
         merged = merged.join(dfs[i])

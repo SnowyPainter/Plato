@@ -34,6 +34,8 @@ class PairTradeStrategy(ABC):
         return df
     def _create_init_data(self, symbols, start, end, interval):
         raw_data, symbols = utils.load_historical_datas(symbols, start, end, interval)
+        if len(raw_data) == 0:
+            return raw_data
         raw_data.index = pd.to_datetime(raw_data.index).tz_localize(None)
         raw_data.drop(columns=[col for col in raw_data.columns if col.endswith('_Volume')], inplace=True)
         raw_data.dropna(inplace=True)
