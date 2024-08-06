@@ -2,13 +2,13 @@
 
 # READ ME 읽어주세요.
 
-저는 이 프로그램 기본판을 판매하지 않습니다. 프로그램을 사용하여 발생하는 모든 손실에 해당하는 것은 실행한 본인의 책임입니다.  
+프로그램을 사용하여 발생하는 모든 손실에 해당하는 것은 실행한 본인의 책임입니다.  
 프로그램에 정보를 입력한 후 실행하면, 장이 열리는 즉시 모델들에 의해서 투자가 진행됩니다. 이에 발생하는 손실에 대해서, **저는 책임이 없음을 고지합니다**.
-다시 말하지만 **저는 프로그램을 판매하지 않고, 오픈소스로 저의 모델을 공유합니다**. GUI와 TUI, 그 외 모든 프로그램들은 **강제로 설치되지 않으며** 사용자 본인이 **직접 다운로드** 하였으며 API와 관련된 모든 것들 또한 **직접 입력**하였고, 그로 인해 **투자(Invest)를 실행하면 투자가 된다는 것을 인지하셨음을 압니다**.
+다시 말하지만 **오픈소스로 저의 모델을 공유합니다**. GUI와 TUI, 그 외 모든 프로그램들은 **강제로 설치되지 않으며** 사용자 본인이 **직접 다운로드** 하였으며 API와 관련된 모든 것들 또한 **직접 입력**하였고, 그로 인해 **투자(Invest)를 실행하면 투자가 된다는 것을 인지하셨음을 압니다**.
 
-I do not sell the basic version of this program. Any losses arising from the use of the program are the responsibility of the user who executed the program.  
+Any losses arising from the use of the program are the responsibility of the user who executed the program.  
 If you enter information into the program and run it, investments will be made by models as soon as the market opens. **Please note that I am not responsible for any losses arising from this**.
-Again, **I don't sell the program, I just share my models as open source**. GUI, TUI, and all other programs are **not forcefully installed** and are **downloaded** by the user themselves, and everything related to the API is also **entered** directly, resulting in **investment**. I know you realize that if you run , you will be making an **investment**.
+Again, **I just share my models as open source**. GUI, TUI, and all other programs are **not forcefully installed** and are **downloaded** by the user themselves, and everything related to the API is also **entered** directly, resulting in **investment**. I know you realize that if you run , you will be making an **investment**.
 
 # Strategies
 
