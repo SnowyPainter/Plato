@@ -55,7 +55,7 @@ class CompoundInvest(pair_trade_strategy.PairTradeStrategy):
         self.T = self.period_minutes / 60
     
     # 30분 간격 데이터로 고정, 하루마다 매매.
-    def action(self):
+    def action(self, hour_divided_time):
         trade_dict = {}
         for symbol in self.symbols:
             trade_dict[symbol] = 0
