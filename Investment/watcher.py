@@ -25,7 +25,6 @@ class Watcher:
             if not code in self.qtys or not code in self.avgps:
                 continue
             p = utils.calculate_stock_increase_p(self.qtys[code], self.avgps[code], self.prices[symbol][-1]['pr'])            
-            print(p)
             if p >= tp:
                 sell_list.append({"symbol":symbol, "p": p})
         return sell_list
