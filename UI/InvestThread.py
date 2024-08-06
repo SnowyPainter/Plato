@@ -69,7 +69,7 @@ class InvestThread(QThread):
             elif self.interval == '30m':
                 action_intervals = [0, 29]
         elif self.strategy == "Compound":
-            action_intervals = [9] #Hour
+            action_intervals = [12] #Hour
             data_append_intervals = [0, 30]
             
         watch_TP_interval_minutes = list(range(0, 60, 1))

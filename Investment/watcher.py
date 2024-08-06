@@ -22,6 +22,8 @@ class Watcher:
         sell_list = []
         for symbol in self.symbols:
             code = symbol[:6]
+            if not code in self.qtys or not cdoe in self.avgps:
+                continue
             p = utils.calculate_stock_increase_p(self.qtys[code], self.avgps[code], self.prices[symbol][-1]['pr'])            
             if p >= tp:
                 sell_list.append({"symbol":symbol, "p": p})
@@ -32,6 +34,8 @@ class Watcher:
         sell_list = []
         for symbol in self.symbols:
             code = symbol[:6]
+            if not code in self.qtys or not cdoe in self.avgps:
+                continue
             p = utils.calculate_stock_increase_p(self.qtys[code], self.avgps[code], self.prices[symbol][-1]['pr'])
             if p <= sl:
                 sell_list.append({"symbol":symbol, "p": p})

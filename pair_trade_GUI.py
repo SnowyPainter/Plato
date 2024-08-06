@@ -11,7 +11,7 @@ import json
 from Strategy import Neo_invest, Compound_invest
 from UI import InvestThread, Presets
 from LM import news
-from Models import MC_VaR, CAPM
+from Models import MC_VaR, CAPM, volatility_predictor
 from Investment import kis
 import corr_high_finder
 import utils
